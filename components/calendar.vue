@@ -406,8 +406,8 @@ onMounted(async () => {
 
     <!-- Summary Section -->
     <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 text-sm">
-      <div class="overflow-y-auto max-h-[200px]">
-        <h3 class="font-bold mb-2 sticky top-0 bg-gray-100 text-red-600 p-1">
+      <div>
+        <h3 class="font-bold mb-2 bg-gray-100 text-red-600 p-1">
           Holiday Requests {{ holidaySummary.hrDays.length }}d / {{ totals.HRHours }}h:
         </h3>
         <ul class="list-disc pl-4">
@@ -419,8 +419,8 @@ onMounted(async () => {
           </li>
         </ul>
       </div>
-      <div class="overflow-y-auto max-h-[200px]">
-        <h3 class="font-bold mb-2 sticky top-0 bg-gray-100 text-orange-600 p-1">
+      <div>
+        <h3 class="font-bold mb-2 bg-gray-100 text-orange-600 p-1">
           Free Days {{ holidaySummary.fdDays.length }}d / {{ totals.FDHours }}h:
         </h3>
         <ul class="list-disc pl-4">
