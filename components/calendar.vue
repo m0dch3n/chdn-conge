@@ -460,7 +460,7 @@ function isConnectedHoliday(year: number, month: number, day: number) {
               v-if="!betterViewMode && showConnectedTooltip"
               class="absolute left-0 -bottom-12 w-48 px-2 py-1 bg-gray-900 text-white text-xs rounded shadow-lg z-10"
             >
-              Please enable "Show only holiday" first to use this feature
+              Shows connected holidays when "Show only holiday" is enabled
             </div>
           </label>
         </div>
