@@ -218,7 +218,7 @@ const holidaySummary = computed(() => {
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col items-center justify-center bg-gray-100 p-8">
+  <div class="flex min-h-screen flex-col items-center bg-gray-100 p-8">
     <!-- Custom Tooltip -->
     <div
       v-show="showTooltip"
@@ -231,54 +231,22 @@ const holidaySummary = computed(() => {
       {{ tooltipContent }}
     </div>
 
-    <!-- Calendar Grid -->
-    <div class="grid gap-2 select-none">
-      <template v-for="month in 12" :key="month">
-        <div class="flex items-center gap-2">
-          <!-- Month Label -->
-          <div class="w-24 font-bold">
-            {{ format(new Date(selectedYear, month - 1), 'MMMM') }}
-          </div>
-          
-          <!-- Days -->
-          <template v-for="day in getDaysInMonth(month)" :key="day">
-            <div 
-              class="h-8 w-8 flex items-center justify-center rounded text-sm transition-colors"
-              :class="{
-                'bg-green-200 not-allowed': !hideWeekendColors && getDayOfWeek(selectedYear, month, day) === 6,
-                'bg-green-500 text-white not-allowed': !hideWeekendColors && getDayOfWeek(selectedYear, month, day) === 0,
-                'cursor-pointer': isClickable(selectedYear, month, day),
-                'cursor-not-allowed': !isClickable(selectedYear, month, day),
-                'bg-red-600 text-white': !hideWeekendColors && isPublicHoliday(selectedYear, month, day),
-                'bg-red-100 !text-red-600 border-2 border-red-400': dayStates[getDayKey(selectedYear, month, day)] === 'HR', 
-                'bg-orange-100 !text-orange-600 border-2 border-orange-400': dayStates[getDayKey(selectedYear, month, day)] === 'FD', 
-              }"
-              @click="isClickable(selectedYear, month, day) && 
-                     toggleDayState(selectedYear, month, day)"
-              @mousemove="handleMouseMove($event, selectedYear, month, day)"
-              @mouseleave="handleMouseLeave"
-            >
-              {{ dayStates[getDayKey(selectedYear, month, day)] || day }}
-            </div>
-          </template>
-        </div>
-      </template>
-    </div>
-
     <!-- Year Input and Totals -->
-    <div class="mt-8 flex items-center gap-4">
-      <input 
-        type="number" 
-        v-model="selectedYear"
-        class="border rounded px-3 py-1"
-      >
-      <button 
-        @click="resetYear"
-        class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-      >
-        Reset Year
-      </button>
-      <label class="flex items-center gap-2 cursor-pointer">
+    <div class="mb-8 flex flex-wrap items-center gap-4">
+      <div class="flex items-center gap-4 flex-wrap">
+        <input 
+          type="number" 
+          v-model="selectedYear"
+          class="border rounded px-3 py-1 w-24"
+        >
+        <button 
+          @click="resetYear"
+          class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+        >
+          Reset Year
+        </button>
+      </div>
+      <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-[200px]">
         <input
           type="checkbox"
           v-model="hideWeekendColors"
@@ -290,10 +258,52 @@ const holidaySummary = computed(() => {
       </label>
     </div>
 
+    <!-- Calendar Grid -->
+    <div class="flex justify-center w-full">
+      <div class="overflow-x-auto w-full max-w-full">
+        <div class="min-w-fit w-max mx-auto">
+          <div class="grid gap-2 select-none">
+            <template v-for="month in 12" :key="month">
+              <div class="flex items-center gap-2">
+                <!-- Month Label -->
+                <div class="w-24 font-bold">
+                  {{ format(new Date(selectedYear, month - 1), 'MMMM') }}
+                </div>
+                
+                <!-- Days -->
+                <template v-for="day in getDaysInMonth(month)" :key="day">
+                  <div 
+                    class="h-8 w-8 flex items-center justify-center rounded text-sm transition-colors"
+                    :class="{
+                      'bg-green-200 not-allowed': !hideWeekendColors && getDayOfWeek(selectedYear, month, day) === 6,
+                      'bg-green-500 text-white not-allowed': !hideWeekendColors && getDayOfWeek(selectedYear, month, day) === 0,
+                      'cursor-pointer': isClickable(selectedYear, month, day),
+                      'cursor-not-allowed': !isClickable(selectedYear, month, day),
+                      'bg-red-600 text-white': !hideWeekendColors && isPublicHoliday(selectedYear, month, day),
+                      'bg-red-100 !text-red-600 border-2 border-red-400': dayStates[getDayKey(selectedYear, month, day)] === 'HR', 
+                      'bg-orange-100 !text-orange-600 border-2 border-orange-400': dayStates[getDayKey(selectedYear, month, day)] === 'FD', 
+                    }"
+                    @click="isClickable(selectedYear, month, day) && 
+                           toggleDayState(selectedYear, month, day)"
+                    @mousemove="handleMouseMove($event, selectedYear, month, day)"
+                    @mouseleave="handleMouseLeave"
+                  >
+                    {{ dayStates[getDayKey(selectedYear, month, day)] || day }}
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Summary Section -->
-    <div class="mt-4 grid grid-cols-2 gap-8 text-sm h-[200px]">
-      <div class="overflow-y-auto">
-        <h3 class="font-bold mb-2 sticky top-0 bg-gray-100 text-red-600">Holiday Requests {{ holidaySummary.hrDays.length }}d / {{ totals.HRHours }}h:</h3>
+    <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 text-sm">
+      <div class="overflow-y-auto max-h-[200px]">
+        <h3 class="font-bold mb-2 sticky top-0 bg-gray-100 text-red-600 p-1">
+          Holiday Requests {{ holidaySummary.hrDays.length }}d / {{ totals.HRHours }}h:
+        </h3>
         <ul class="list-disc pl-4">
           <li v-for="date in holidaySummary.hrDays" :key="date">
             {{ date }}
@@ -303,8 +313,10 @@ const holidaySummary = computed(() => {
           </li>
         </ul>
       </div>
-      <div class="overflow-y-auto">
-        <h3 class="font-bold mb-2 sticky top-0 bg-gray-100 text-orange-600">Free Days {{ holidaySummary.fdDays.length }}d / {{ totals.FDHours }}h:</h3>
+      <div class="overflow-y-auto max-h-[200px]">
+        <h3 class="font-bold mb-2 sticky top-0 bg-gray-100 text-orange-600 p-1">
+          Free Days {{ holidaySummary.fdDays.length }}d / {{ totals.FDHours }}h:
+        </h3>
         <ul class="list-disc pl-4">
           <li v-for="date in holidaySummary.fdDays" :key="date">
             {{ date }}
