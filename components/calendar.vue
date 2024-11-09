@@ -9,7 +9,7 @@ interface Holiday {
 
 const selectedYear = ref(new Date().getFullYear())
 const dayStates = ref<Record<string, string>>({})
-const hideWeekendColors = ref(false)
+const betterViewMode = ref(false)
 
 function getEasterSunday(year: number): Date {
     const a = year % 19
@@ -294,6 +294,68 @@ onMounted(async () => {
     await loadState(route.params.id as string)
   }
 })
+
+// Add this helper function
+function isConnectedWeekend(year: number, month: number, day: number) {
+  const date = new Date(year, month - 1, day)
+  const dayOfWeek = date.getDay()
+  
+  // Only check Saturdays and Sundays
+  if (dayOfWeek !== 0 && dayOfWeek !== 6) return null
+  
+  // For Saturday, check Friday and Monday
+  if (dayOfWeek === 6) {
+    const fridayKey = getDayKey(year, month, day - 1)
+    const mondayKey = getDayKey(year, month, day + 2)
+    const fridayState = dayStates.value[fridayKey]
+    const mondayState = dayStates.value[mondayKey]
+    const fridayIsHoliday = isPublicHoliday(year, month, day - 1)
+    const mondayIsHoliday = isPublicHoliday(year, month, day + 2)
+    
+    // Return the state if either Friday or Monday has one, or is a holiday
+    if (fridayIsHoliday || mondayIsHoliday) return 'HR'
+    return fridayState || mondayState
+  }
+  
+  // For Sunday, check Friday and Monday
+  if (dayOfWeek === 0) {
+    const fridayKey = getDayKey(year, month, day - 2)
+    const mondayKey = getDayKey(year, month, day + 1)
+    const fridayState = dayStates.value[fridayKey]
+    const mondayState = dayStates.value[mondayKey]
+    const fridayIsHoliday = isPublicHoliday(year, month, day - 2)
+    const mondayIsHoliday = isPublicHoliday(year, month, day + 1)
+    
+    // Return the state if either Friday or Monday has one, or is a holiday
+    if (fridayIsHoliday || mondayIsHoliday) return 'HR'
+    return fridayState || mondayState
+  }
+}
+
+// Add this helper function
+function isConnectedHoliday(year: number, month: number, day: number) {
+  if (!isPublicHoliday(year, month, day)) return null
+  
+  const date = new Date(year, month - 1, day)
+  const prevDate = new Date(date)
+  const nextDate = new Date(date)
+  prevDate.setDate(date.getDate() - 1)
+  nextDate.setDate(date.getDate() + 1)
+  
+  // Check previous day
+  const prevKey = getDayKey(prevDate.getFullYear(), prevDate.getMonth() + 1, prevDate.getDate())
+  const prevState = dayStates.value[prevKey]
+  const prevIsWeekend = [0, 6].includes(prevDate.getDay())
+  
+  // Check next day
+  const nextKey = getDayKey(nextDate.getFullYear(), nextDate.getMonth() + 1, nextDate.getDate())
+  const nextState = dayStates.value[nextKey]
+  const nextIsWeekend = [0, 6].includes(nextDate.getDay())
+  
+  // Return true if either adjacent day is a weekend or has HR/FD state
+  return (prevState === 'HR' || prevState === 'FD' || prevIsWeekend || 
+          nextState === 'HR' || nextState === 'FD' || nextIsWeekend)
+}
 </script>
 
 <template>
@@ -354,12 +416,12 @@ onMounted(async () => {
       <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-[200px]">
         <input
           type="checkbox"
-          v-model="hideWeekendColors"
+          v-model="betterViewMode"
           class="sr-only peer"
         >
         <div class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
         </div>
-        <span class="text-sm">Hide Weekend and Public Holiday Colors</span>
+        <span class="text-sm">Show only holiday</span>
       </label>
     </div>
 
@@ -381,13 +443,16 @@ onMounted(async () => {
                   <div 
                     class="h-6 w-6 sm:h-8 sm:w-8 flex items-center justify-center rounded text-sm transition-colors"
                     :class="{
-                      'bg-green-200': !hideWeekendColors && getDayOfWeek(selectedYear, month, day) === 6,
-                      'bg-green-500 text-white': !hideWeekendColors && getDayOfWeek(selectedYear, month, day) === 0,
+                      'bg-green-200': !betterViewMode && getDayOfWeek(selectedYear, month, day) === 6,
+                      'bg-green-500 text-white': !betterViewMode && getDayOfWeek(selectedYear, month, day) === 0,
                       'cursor-pointer': !id && isClickable(selectedYear, month, day),
                       'cursor-default': id || !isClickable(selectedYear, month, day),
-                      'bg-red-600 text-white': !hideWeekendColors && isPublicHoliday(selectedYear, month, day),
-                      'bg-red-100 !text-red-600 border-2 border-red-400': dayStates[getDayKey(selectedYear, month, day)] === 'HR', 
-                      'bg-orange-100 !text-orange-600 border-2 border-orange-400': dayStates[getDayKey(selectedYear, month, day)] === 'FD', 
+                      'bg-red-600 text-white': !betterViewMode && isPublicHoliday(selectedYear, month, day),
+                      'bg-red-100 !text-red-600 border-2 border-red-400': dayStates[getDayKey(selectedYear, month, day)] === 'HR' || 
+                        (betterViewMode && isConnectedWeekend(selectedYear, month, day) === 'HR') ||
+                        (betterViewMode && isPublicHoliday(selectedYear, month, day) && isConnectedHoliday(selectedYear, month, day)), 
+                      'bg-orange-100 !text-orange-600 border-2 border-orange-400': dayStates[getDayKey(selectedYear, month, day)] === 'FD' || 
+                        (betterViewMode && isConnectedWeekend(selectedYear, month, day) === 'FD'), 
                     }"
                     @click="isClickable(selectedYear, month, day) && 
                            toggleDayState(selectedYear, month, day)"
