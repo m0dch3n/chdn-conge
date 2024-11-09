@@ -1,15 +1,32 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { format, getDaysInMonth as getDays, addDays } from 'date-fns'
+import { useCalendarState } from './composables/useCalendarState'
 
 interface Holiday {
   date: Date;
   name: string;
 }
 
-const selectedYear = ref(new Date().getFullYear())
 const dayStates = ref<Record<string, string>>({})
-const hideWeekendColors = ref(false)
+
+const { 
+  shareCalendar, 
+  selectedYear, 
+  hasEditAccess,
+  hideWeekendColors,
+  holidaySummary
+} = useCalendarState({
+  onSaveSuccess: (url: string) => {
+    shareUrl.value = url
+    showModal.value = true
+  },
+  dayStates
+})
+
+// Add these refs for modal control
+const showModal = ref(false)
+const shareUrl = ref('')
 
 function getEasterSunday(year: number): Date {
     const a = year % 19
@@ -109,10 +126,21 @@ function getHolidayName(year: number, month: number, day: number) {
 function toggleDayState(year: number, month: number, day: number) {
   const key = getDayKey(year, month, day)
   const currentState = dayStates.value[key] || ''
+  const date = format(new Date(year, month - 1, day), 'dd MMM yyyy')
   
-  if (!currentState) dayStates.value[key] = 'HR'
-  else if (currentState === 'HR') dayStates.value[key] = 'FD'
-  else dayStates.value[key] = ''
+  if (!currentState) {
+    dayStates.value[key] = 'HR'
+    holidaySummary.hrDays.push(date)
+    holidaySummary.hrDays.sort()
+  } else if (currentState === 'HR') {
+    dayStates.value[key] = 'FD'
+    holidaySummary.hrDays = holidaySummary.hrDays.filter(d => d !== date)
+    holidaySummary.fdDays.push(date)
+    holidaySummary.fdDays.sort()
+  } else {
+    dayStates.value[key] = ''
+    holidaySummary.fdDays = holidaySummary.fdDays.filter(d => d !== date)
+  }
 }
 
 function isWeekday(dayOfWeek: number) {
@@ -168,19 +196,6 @@ function handleMouseLeave() {
   tooltipDay.value = null
 }
 
-// Load state from localStorage
-onMounted(() => {
-  const savedState = localStorage.getItem('calendarState')
-  if (savedState) {
-    dayStates.value = JSON.parse(savedState)
-  }
-})
-
-// Save state to localStorage when it changes
-watch(dayStates, (newState) => {
-  localStorage.setItem('calendarState', JSON.stringify(newState))
-}, { deep: true })
-
 function resetYear() {
   // Filter out entries for the selected year
   const newStates = Object.entries(dayStates.value).reduce((acc, [key, value]) => {
@@ -192,29 +207,9 @@ function resetYear() {
   }, {} as Record<string, string>)
   
   dayStates.value = newStates
+  holidaySummary.hrDays = []
+  holidaySummary.fdDays = []
 }
-
-// Add these computed properties after other computed properties
-const holidaySummary = computed(() => {
-  const hrDays: string[] = []
-  const fdDays: string[] = []
-  
-  Object.entries(dayStates.value).forEach(([key, state]) => {
-    const [year, month, day] = key.split('-').map(Number)
-    
-    // Only process entries for selected year
-    if (year === selectedYear.value) {
-      const date = format(new Date(year, month - 1, day), 'dd MMM yyyy')
-      if (state === 'HR') hrDays.push(date)
-      if (state === 'FD') fdDays.push(date)
-    }
-  })
-  
-  return {
-    hrDays: hrDays.sort(),
-    fdDays: fdDays.sort()
-  }
-})
 </script>
 
 <template>
@@ -242,8 +237,15 @@ const holidaySummary = computed(() => {
         <button 
           @click="resetYear"
           class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-        >
+          >
           Reset Year
+          </button>
+          <button 
+          @click="shareCalendar"
+          :disabled="!hasEditAccess"
+          class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+        >
+          Share Calendar
         </button>
       </div>
       <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-[200px]">
@@ -251,6 +253,7 @@ const holidaySummary = computed(() => {
           type="checkbox"
           v-model="hideWeekendColors"
           class="sr-only peer"
+          :disabled="!hasEditAccess"
         >
         <div class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
         </div>
@@ -315,7 +318,7 @@ const holidaySummary = computed(() => {
       </div>
       <div class="overflow-y-auto max-h-[200px]">
         <h3 class="font-bold mb-2 sticky top-0 bg-gray-100 text-orange-600 p-1">
-          Free Days {{ holidaySummary.fdDays.length }}d / {{ totals.FDHours }}h:
+          Free Days {{ totals.FDHours }}h:
         </h3>
         <ul class="list-disc pl-4">
           <li v-for="date in holidaySummary.fdDays" :key="date">
@@ -325,6 +328,28 @@ const holidaySummary = computed(() => {
             No free days
           </li>
         </ul>
+      </div>
+    </div>
+
+    <!-- Add this modal before the closing </div> of your main container -->
+    <div 
+      v-if="showModal" 
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      @click="showModal = false"
+    >
+      <div 
+        class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4"
+        @click.stop
+      >
+        <h3 class="text-lg font-bold mb-4">Share Calendar</h3>
+        <p class="mb-4">URL copied to clipboard:</p>
+        <p class="bg-gray-100 p-3 rounded mb-4 break-all">{{ shareUrl }}</p>
+        <button 
+          @click="showModal = false"
+          class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors w-full"
+        >
+          Close
+        </button>
       </div>
     </div>
   </div>
