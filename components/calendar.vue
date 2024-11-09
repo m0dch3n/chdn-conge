@@ -277,9 +277,6 @@ const saveState = async () => {
     setTimeout(() => {
       showModal.value = false
     }, 3000)
-    
-    // Navigate to the new URL
-    router.push(`/${id}`)
   } catch (error) {
     console.error('Failed to save state:', error)
     modalMessage.value = 'Failed to save calendar'
