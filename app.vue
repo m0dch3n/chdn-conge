@@ -196,23 +196,23 @@ function resetYear() {
 
 // Add these computed properties after other computed properties
 const holidaySummary = computed(() => {
-  const hrDays: string[] = []
-  const fdDays: string[] = []
+  const hrDays: Date[] = []
+  const fdDays: Date[] = []
   
   Object.entries(dayStates.value).forEach(([key, state]) => {
     const [year, month, day] = key.split('-').map(Number)
     
     // Only process entries for selected year
     if (year === selectedYear.value) {
-      const date = format(new Date(year, month - 1, day), 'dd MMM yyyy')
+      const date = new Date(year, month - 1, day)
       if (state === 'HR') hrDays.push(date)
       if (state === 'FD') fdDays.push(date)
     }
   })
   
   return {
-    hrDays: hrDays.sort(),
-    fdDays: fdDays.sort()
+    hrDays: hrDays.sort((a, b) => a.getTime() - b.getTime()).map(date => format(date, 'dd MMM yyyy')),
+    fdDays: fdDays.sort((a, b) => a.getTime() - b.getTime()).map(date => format(date, 'dd MMM yyyy'))
   }
 })
 </script>
