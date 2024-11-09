@@ -181,6 +181,12 @@ function handleMouseLeave() {
 
 // Load state from localStorage or URL
 onMounted(async () => {
+  // First try to load the saved year
+  const savedYear = localStorage.getItem('selectedYear')
+  if (savedYear && !id.value) {
+    selectedYear.value = parseInt(savedYear)
+  }
+
   if (id.value) {
     // If we have an ID, load from Redis and make read-only
     await loadState(id.value)
@@ -191,6 +197,11 @@ onMounted(async () => {
       dayStates.value = JSON.parse(savedState)
     }
   }
+})
+
+// Add a new watch for selectedYear
+watch(selectedYear, (newYear) => {
+  localStorage.setItem('selectedYear', newYear.toString())
 })
 
 // Only save to localStorage when there's no ID
