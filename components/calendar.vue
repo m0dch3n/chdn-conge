@@ -475,9 +475,8 @@ function isConnectedHoliday(year: number, month: number, day: number) {
             <template v-for="month in 12" :key="month">
               <div class="flex items-center gap-2">
                 <!-- Month Label -->
-                <div class="w-8 sm:w-24 font-bold">
-                  <span class="hidden sm:inline">{{ format(new Date(selectedYear, month - 1), 'MMMM') }}</span>
-                  <span class="sm:hidden">{{ format(new Date(selectedYear, month - 1), 'MMM') }}</span>
+                <div class="w-8 font-bold">
+                  <span>{{ format(new Date(selectedYear, month - 1), 'MMM') }}</span>
                 </div>
                 
                 <!-- Days -->
