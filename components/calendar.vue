@@ -391,7 +391,7 @@ function isConnectedHoliday(year: number, month: number, day: number) {
           @click="router.push('/')"
           class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
         >
-          Go back
+          Go back to my holidays
         </button>
         
         <!-- Show as text when id exists -->
