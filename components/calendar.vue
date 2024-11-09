@@ -270,13 +270,13 @@ const saveState = async () => {
     
     // Copy to clipboard and show modal
     await navigator.clipboard.writeText(url)
-    modalMessage.value = 'Calendar URL copied to clipboard!'
+    modalMessage.value = `Calendar URL copied to clipboard! (${url})`
     showModal.value = true
     
     // Hide modal after 3 seconds
     setTimeout(() => {
       showModal.value = false
-    }, 3000)
+    }, 10000)
   } catch (error) {
     console.error('Failed to save state:', error)
     modalMessage.value = 'Failed to save calendar'
