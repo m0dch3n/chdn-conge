@@ -10,6 +10,7 @@ interface Holiday {
 const selectedYear = ref(new Date().getFullYear())
 const dayStates = ref<Record<string, string>>({})
 const betterViewMode = ref(false)
+const showConnected = ref(false)
 
 function getEasterSunday(year: number): Date {
     const a = year % 19
@@ -413,16 +414,36 @@ function isConnectedHoliday(year: number, month: number, day: number) {
           Share Calendar
         </button>
       </div>
-      <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-[200px]">
-        <input
-          type="checkbox"
-          v-model="betterViewMode"
-          class="sr-only peer"
+      <div class="flex flex-wrap items-center gap-4">
+        <!-- Existing betterViewMode toggle -->
+        <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-[200px]">
+          <input
+            type="checkbox"
+            v-model="betterViewMode"
+            class="sr-only peer"
+          >
+          <div class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
+          </div>
+          <span class="text-sm">Show only holiday</span>
+        </label>
+
+        <!-- Modified showConnected toggle -->
+        <label 
+          class="flex items-center gap-2 flex-1 min-w-[200px]"
+          :class="{ 'cursor-pointer': betterViewMode, 'cursor-not-allowed opacity-50': !betterViewMode }"
         >
-        <div class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
-        </div>
-        <span class="text-sm">Show only holiday</span>
-      </label>
+          <input
+            type="checkbox"
+            v-model="showConnected"
+            :disabled="!betterViewMode"
+            class="sr-only peer"
+            @change="!betterViewMode ? showConnected = false : null"
+          >
+          <div class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
+          </div>
+          <span class="text-sm">Show connected</span>
+        </label>
+      </div>
     </div>
 
     <!-- Calendar Grid -->
@@ -449,10 +470,10 @@ function isConnectedHoliday(year: number, month: number, day: number) {
                       'cursor-default': id || !isClickable(selectedYear, month, day),
                       'bg-red-600 text-white': !betterViewMode && isPublicHoliday(selectedYear, month, day),
                       'bg-red-100 !text-red-600 border-2 border-red-400': dayStates[getDayKey(selectedYear, month, day)] === 'HR' || 
-                        (betterViewMode && isConnectedWeekend(selectedYear, month, day) === 'HR') ||
-                        (betterViewMode && isPublicHoliday(selectedYear, month, day) && isConnectedHoliday(selectedYear, month, day)), 
+                        (showConnected && betterViewMode && isConnectedWeekend(selectedYear, month, day) === 'HR') ||
+                        (showConnected && betterViewMode && isPublicHoliday(selectedYear, month, day) && isConnectedHoliday(selectedYear, month, day)), 
                       'bg-orange-100 !text-orange-600 border-2 border-orange-400': dayStates[getDayKey(selectedYear, month, day)] === 'FD' || 
-                        (betterViewMode && isConnectedWeekend(selectedYear, month, day) === 'FD'), 
+                        (showConnected && betterViewMode && isConnectedWeekend(selectedYear, month, day) === 'FD'), 
                     }"
                     @click="isClickable(selectedYear, month, day) && 
                            toggleDayState(selectedYear, month, day)"
