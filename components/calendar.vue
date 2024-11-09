@@ -252,6 +252,7 @@ const router = useRouter()
 // Add these refs for modal state
 const showModal = ref(false)
 const modalMessage = ref('')
+const modalUrl = ref('')
 
 // Modify saveState function
 const saveState = async () => {
@@ -270,8 +271,9 @@ const saveState = async () => {
     
     // Copy to clipboard and show modal
     await navigator.clipboard.writeText(url)
-    modalMessage.value = `Calendar URL copied to clipboard! (${url})`
+    modalMessage.value = `Calendar URL copied to clipboard!`
     showModal.value = true
+    modalUrl.value = url
     
     // Hide modal after 3 seconds
     setTimeout(() => {
@@ -546,10 +548,18 @@ function isConnectedHoliday(year: number, month: number, day: number) {
       class="fixed z-50 inset-0 bg-black bg-opacity-50 flex items-center justify-center"
     >
       <div class="bg-white p-6 rounded-lg">
-        <p>{{ modalMessage }}</p>
+        <p>{{ modalMessage}}</p>
+        <a 
+          :href="modalUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-blue-500 hover:text-blue-700 underline break-all"
+        >
+          {{ modalUrl }}
+        </a>
         <button 
           @click="showModal = false"
-          class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors block w-full"
         >
           Close
         </button>
