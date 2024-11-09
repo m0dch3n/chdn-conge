@@ -11,6 +11,7 @@ const selectedYear = ref(new Date().getFullYear())
 const dayStates = ref<Record<string, string>>({})
 const betterViewMode = ref(false)
 const showConnected = ref(false)
+const showConnectedTooltip = ref(false)
 
 function getEasterSunday(year: number): Date {
     const a = year % 19
@@ -426,34 +427,46 @@ function isConnectedHoliday(year: number, month: number, day: number) {
         </button>
       </div>
       <div class="flex flex-wrap items-center gap-4">
-        <!-- Existing betterViewMode toggle -->
-        <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-[200px]">
-          <input
-            type="checkbox"
-            v-model="betterViewMode"
-            class="sr-only peer"
-          >
-          <div class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
-          </div>
-          <span class="text-sm">Show only holiday</span>
-        </label>
+        <div class="flex flex-col gap-2 min-w-[200px]">
+          <!-- Existing betterViewMode toggle -->
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              v-model="betterViewMode"
+              class="sr-only peer"
+            >
+            <div class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
+            </div>
+            <span class="text-sm">Show only holiday</span>
+          </label>
 
-        <!-- Modified showConnected toggle -->
-        <label 
-          class="flex items-center gap-2 flex-1 min-w-[200px]"
-          :class="{ 'cursor-pointer': betterViewMode, 'cursor-not-allowed opacity-50': !betterViewMode }"
-        >
-          <input
-            type="checkbox"
-            v-model="showConnected"
-            :disabled="!betterViewMode"
-            class="sr-only peer"
-            @change="!betterViewMode ? showConnected = false : null"
+          <!-- Modified showConnected toggle -->
+          <label 
+            class="flex items-center gap-2 relative"
+            :class="{ 'cursor-pointer': betterViewMode, 'opacity-50': !betterViewMode }"
+            @mouseenter="!betterViewMode ? showConnectedTooltip = true : null"
+            @mouseleave="showConnectedTooltip = false"
           >
-          <div class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
-          </div>
-          <span class="text-sm">Show connected</span>
-        </label>
+            <input
+              type="checkbox"
+              v-model="showConnected"
+              :disabled="!betterViewMode"
+              class="sr-only peer"
+              @change="!betterViewMode ? showConnected = false : null"
+            >
+            <div class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
+            </div>
+            <span class="text-sm">Show connected</span>
+            
+            <!-- Tooltip -->
+            <div
+              v-if="!betterViewMode && showConnectedTooltip"
+              class="absolute left-0 -bottom-12 w-48 px-2 py-1 bg-gray-900 text-white text-xs rounded shadow-lg z-10"
+            >
+              Please enable "Show only holiday" first to use this feature
+            </div>
+          </label>
+        </div>
       </div>
     </div>
 
