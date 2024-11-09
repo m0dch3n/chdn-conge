@@ -483,7 +483,7 @@ function isConnectedHoliday(year: number, month: number, day: number) {
                 <!-- Days -->
                 <template v-for="day in getDaysInMonth(month)" :key="day">
                   <div 
-                    class="h-6 w-6 sm:h-8 sm:w-8 flex items-center justify-center rounded text-sm transition-colors"
+                    class="h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center rounded text-sm transition-colors"
                     :class="{
                       'bg-green-200': !betterViewMode && getDayOfWeek(selectedYear, month, day) === 6,
                       'bg-green-500 text-white': !betterViewMode && getDayOfWeek(selectedYear, month, day) === 0,
