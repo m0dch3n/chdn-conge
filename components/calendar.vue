@@ -423,7 +423,7 @@ function isConnectedHoliday(year: number, month: number, day: number) {
           @click="saveState"
           class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
         >
-          Share Calendar
+          Share my holidays
         </button>
       </div>
       <div class="flex flex-wrap items-center gap-4">
