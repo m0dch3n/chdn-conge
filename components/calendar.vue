@@ -37,13 +37,11 @@ const holidays = computed(() => {
   const year = selectedYear.value
   const easterSunday = getEasterSunday(year)
   const easterMonday = addDays(easterSunday, 1)
-  const goodFriday = addDays(easterSunday, -2)
   const ascensionDay = addDays(easterSunday, 39)
   const whitMonday = addDays(easterSunday, 50)
 
   return [
     { date: new Date(year, 0, 1), name: "New Year's Day" },
-    { date: goodFriday, name: 'Good Friday' },
     { date: easterMonday, name: 'Easter Monday' },
     { date: new Date(year, 4, 1), name: 'Labour Day' },
     { date: new Date(year, 4, 9), name: 'Europe Day' },
