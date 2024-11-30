@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { format, getDaysInMonth as getDays, addDays, parse, parseISO } from 'date-fns'
+import { format, getDaysInMonth as getDays, addDays, parse, parseISO, getWeek } from 'date-fns'
 
 interface Holiday {
   date: Date;
@@ -505,9 +505,61 @@ function parseICSHolidays(icsData: string, targetYear: number) {
   return events.filter(event => {
     const startYear = event.start.getUTCFullYear()
     const endYear = event.end.getUTCFullYear()
-    return startYear >= 2024 && endYear >= 2024
+    return startYear >= 2024 || endYear >= 2024
   })
 }
+
+// Add new ref after other refs
+const showMonthView = ref(true)
+
+// Add helper function to organize days into weeks
+function getMonthWeeks(month: number) {
+  const daysInMonth = getDaysInMonth(month)
+  const firstDayOfMonth = new Date(selectedYear.value, month - 1, 1)
+  let firstDayWeekday = firstDayOfMonth.getDay()
+  // Adjust for Monday start (0 = Monday, 6 = Sunday)
+  firstDayWeekday = firstDayWeekday === 0 ? 6 : firstDayWeekday - 1
+
+  const weeks: { weekNum: number | null; days: number[] }[] = []
+  let currentWeek: number[] = Array(firstDayWeekday).fill(0) // Padding days
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    currentWeek.push(day)
+    if (currentWeek.length === 7) {
+      const weekDate = new Date(selectedYear.value, month - 1, currentWeek.find(d => d !== 0) || 1)
+      weeks.push({ 
+        weekNum: getWeek(weekDate, { weekStartsOn: 1 }), 
+        days: currentWeek 
+      })
+      currentWeek = []
+    }
+  }
+
+  // Add padding to last week if needed
+  if (currentWeek.length > 0) {
+    while (currentWeek.length < 7) {
+      currentWeek.push(0)
+    }
+    const weekDate = new Date(selectedYear.value, month - 1, currentWeek.find(d => d !== 0) || 1)
+    weeks.push({ 
+      weekNum: getWeek(weekDate, { weekStartsOn: 1 }), 
+      days: currentWeek 
+    })
+  }
+
+  // Add extra weeks if we have less than 6, but with null week numbers
+  while (weeks.length < 6) {
+    weeks.push({ 
+      weekNum: null, 
+      days: Array(7).fill(0) 
+    })
+  }
+
+  return weeks
+}
+
+// Add weekday labels
+const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 </script>
 
 <template>
@@ -583,6 +635,15 @@ function parseICSHolidays(icsData: string, targetYear: number) {
             </div>
             <span class="text-sm">Show school holidays</span>
           </label>
+
+          <!-- Add toggle button in the controls section around line 580 -->
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" v-model="showMonthView" class="sr-only peer">
+            <div
+              class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
+            </div>
+            <span class="text-sm">Month view</span>
+          </label>
         </div>
       </div>
     </div>
@@ -590,7 +651,8 @@ function parseICSHolidays(icsData: string, targetYear: number) {
     <!-- Calendar Grid -->
     <div class="flex justify-center w-full">
       <div class="overflow-x-auto w-full max-w-full">
-        <div class="min-w-fit w-max mx-auto">
+        <!-- Linear view (existing) -->
+        <div v-if="!showMonthView" class="min-w-fit w-max mx-auto">
           <div class="grid gap-2 select-none">
             <template v-for="month in 12" :key="month">
               <div class="flex items-center gap-2">
@@ -623,6 +685,68 @@ function parseICSHolidays(icsData: string, targetYear: number) {
                 </template>
               </div>
             </template>
+          </div>
+        </div>
+
+        <!-- Month view (new) -->
+        <div v-else class="w-full flex justify-center">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-fit">
+            <div v-for="month in 12" :key="month" 
+              class="border rounded-lg p-2 sm:p-4 bg-white shadow w-[300px]">
+              <h3 class="text-base sm:text-lg font-bold mb-2 sm:mb-4 text-center">
+                {{ format(new Date(selectedYear, month - 1), 'MMMM') }}
+              </h3>
+              
+              <!-- Weekday headers -->
+              <div class="grid grid-cols-8 gap-0.5 sm:gap-1 mb-1 sm:mb-2">
+                <!-- Week number header -->
+                <div class="h-8 flex items-center justify-center text-xs sm:text-sm font-semibold text-gray-400">
+                  W
+                </div>
+                <!-- Day headers -->
+                <div v-for="label in weekdayLabels" :key="label"
+                  class="h-8 flex items-center justify-center text-xs sm:text-sm font-semibold text-gray-600">
+                  {{ label.slice(0, 2) }}
+                </div>
+              </div>
+
+              <!-- Calendar grid -->
+              <div class="grid grid-cols-8 gap-0.5 sm:gap-1 flex-grow">
+                <template v-for="week in getMonthWeeks(month)" :key="week.weekNum">
+                  <!-- Week number -->
+                  <div class="aspect-square flex items-center justify-center text-xs sm:text-sm text-gray-400 font-medium">
+                    {{ week.weekNum !== null ? week.weekNum : '' }}
+                  </div>
+                  <!-- Days -->
+                  <template v-for="day in week.days" :key="`${month}-${day}`">
+                    <div v-if="day === 0" 
+                      class="aspect-square flex items-center justify-center text-gray-300">
+                    </div>
+                    <div v-else
+                      class="aspect-square flex items-center justify-center rounded text-xs sm:text-sm transition-colors"
+                      :class="{
+                        'bg-blue-100': showSchoolHolidays && isSchoolHoliday(selectedYear, month, day) &&
+                          !isPublicHoliday(selectedYear, month, day) && (!betterViewMode && !isWeekend(selectedYear, month, day) || betterViewMode),
+                        'bg-green-200': !betterViewMode && isSaturday(selectedYear, month, day),
+                        'bg-green-500 text-white': !betterViewMode && isSunday(selectedYear, month, day),
+                        'bg-red-600 text-white': isPublicHoliday(selectedYear, month, day),
+                        'cursor-pointer': !id && isClickable(selectedYear, month, day),
+                        'cursor-default': id || !isClickable(selectedYear, month, day),
+                        'bg-red-100 !text-red-600 border-2 border-red-400': dayStates[getDayKey(selectedYear, month, day)] === 'HR' ||
+                          (showConnected && betterViewMode && isConnectedWeekend(selectedYear, month, day) === 'HR') ||
+                          (showConnected && betterViewMode && isPublicHoliday(selectedYear, month, day) && isConnectedHoliday(selectedYear, month, day)),
+                        'bg-orange-100 !text-orange-600 border-2 border-orange-400': dayStates[getDayKey(selectedYear, month, day)] === 'FD' ||
+                          (showConnected && betterViewMode && isConnectedWeekend(selectedYear, month, day) === 'FD'),
+                      }"
+                      @click="isClickable(selectedYear, month, day) && toggleDayState(selectedYear, month, day)"
+                      @mousemove="handleMouseMove($event, selectedYear, month, day)"
+                      @mouseleave="handleMouseLeave">
+                      {{ betterViewMode ? day : (dayStates[getDayKey(selectedYear, month, day)] || day) }}
+                    </div>
+                  </template>
+                </template>
+              </div>
+            </div>
           </div>
         </div>
       </div>
