@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { format, getDaysInMonth as getDays, addDays } from 'date-fns'
+import { format, getDaysInMonth as getDays, addDays, parse, parseISO } from 'date-fns'
 
 interface Holiday {
   date: Date;
   name: string;
+}
+
+interface SchoolHoliday {
+  startDate: Date;
+  endDate: Date;
+  name: [{ language: string; text: string }];
 }
 
 const selectedYear = ref(new Date().getFullYear())
@@ -12,24 +18,25 @@ const dayStates = ref<Record<string, string>>({})
 const betterViewMode = ref(false)
 const showConnected = ref(false)
 const showConnectedTooltip = ref(false)
+const schoolHolidays = ref<SchoolHoliday[]>([])
 
 function getEasterSunday(year: number): Date {
-    const a = year % 19
-    const b = Math.floor(year / 100)
-    const c = year % 100
-    const d = Math.floor(b / 4)
-    const e = b % 4
-    const f = Math.floor((b + 8) / 25)
-    const g = Math.floor((b - f + 1) / 3)
-    const h = (19 * a + b - d - g + 15) % 30
-    const i = Math.floor(c / 4)
-    const k = c % 4
-    const l = (32 + 2 * e + 2 * i - h - k) % 7
-    const m = Math.floor((a + 11 * h + 22 * l) / 451)
-    const month = Math.floor((h + l - 7 * m + 114) / 31) - 1
-    const day = ((h + l - 7 * m + 114) % 31) + 1
-    
-    return new Date(year, month, day)
+  const a = year % 19
+  const b = Math.floor(year / 100)
+  const c = year % 100
+  const d = Math.floor(b / 4)
+  const e = b % 4
+  const f = Math.floor((b + 8) / 25)
+  const g = Math.floor((b - f + 1) / 3)
+  const h = (19 * a + b - d - g + 15) % 30
+  const i = Math.floor(c / 4)
+  const k = c % 4
+  const l = (32 + 2 * e + 2 * i - h - k) % 7
+  const m = Math.floor((a + 11 * h + 22 * l) / 451)
+  const month = Math.floor((h + l - 7 * m + 114) / 31) - 1
+  const day = ((h + l - 7 * m + 114) % 31) + 1
+
+  return new Date(year, month, day)
 }
 
 // Calculate holidays for a given year
@@ -68,7 +75,7 @@ const totals = computed(() => {
   const counts = Object.entries(dayStates.value).reduce((acc, [key, state]) => {
     // Extract year from the key (format: "yyyy-m-d")
     const yearFromKey = parseInt(key.split('-')[0])
-    
+
     // Only count if it matches selected year
     if (yearFromKey === selectedYear.value) {
       if (state === 'HR') acc.HR++
@@ -106,6 +113,18 @@ function getHolidayName(year: number, month: number, day: number) {
   return holidayMap.value.get(key)
 }
 
+function isSaturday(year: number, month: number, day: number) {
+  return getDayOfWeek(year, month, day) === 6
+}
+
+function isSunday(year: number, month: number, day: number) {
+  return getDayOfWeek(year, month, day) === 0
+}
+
+function isWeekend(year: number, month: number, day: number) {
+  return isSunday(year, month, day) || isSaturday(year, month, day)
+}
+
 // Add prop definition at the top of the script
 const props = defineProps<{
   id?: string  // Optional string prop for the calendar ID
@@ -116,10 +135,10 @@ const id = computed(() => props.id)
 
 function toggleDayState(year: number, month: number, day: number) {
   if (id.value) return // Don't allow changes if viewing saved state
-  
+
   const key = getDayKey(year, month, day)
   const currentState = dayStates.value[key] || ''
-  
+
   if (!currentState) dayStates.value[key] = 'HR'
   else if (currentState === 'HR') dayStates.value[key] = 'FD'
   else dayStates.value[key] = ''
@@ -151,7 +170,12 @@ function getTooltipText(year: number, month: number, day: number) {
   const key = getDayKey(year, month, day)
   const state = dayStates.value[key]
   const holidayName = getHolidayName(year, month, day)
-  
+
+  // Calculate week number
+  const weekNumber = getWeekNumber(date)
+  const isEvenWeek = weekNumber % 2 === 0
+  const weekText = `Week ${weekNumber} (${isEvenWeek ? 'even' : 'odd'})`
+
   let stateText = ''
   if (holidayName) {
     stateText = `- ${holidayName} (Public Holiday)`
@@ -160,8 +184,31 @@ function getTooltipText(year: number, month: number, day: number) {
   } else if (state === 'FD') {
     stateText = '- Free Day'
   }
-  
-  return `${weekday} ${formattedDate} ${stateText}`
+
+  // Add school holiday info
+  const schoolHoliday = schoolHolidays.value.find(holiday => {
+    const start = new Date(holiday.startDate)
+    const end = new Date(holiday.endDate)
+    return date >= start && date <= end
+  })
+  if (schoolHoliday) {
+    stateText += ` - ${schoolHoliday.name[0].text}`
+  }
+
+  return `${weekText} - ${weekday} ${formattedDate} ${stateText}`
+}
+
+// Add this helper function to calculate ISO week number
+function getWeekNumber(date: Date): number {
+  const target = new Date(date.valueOf())
+  const dayNumber = (date.getDay() + 6) % 7
+  target.setDate(target.getDate() - dayNumber + 3)
+  const firstThursday = target.valueOf()
+  target.setMonth(0, 1)
+  if (target.getDay() !== 4) {
+    target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7)
+  }
+  return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000)
 }
 
 function handleMouseMove(event: MouseEvent, year: number, month: number, day: number) {
@@ -196,6 +243,24 @@ onMounted(async () => {
       dayStates.value = JSON.parse(savedState)
     }
   }
+
+  // Fetch and parse ICS data
+  try {
+    const response = await fetch('https://www.educdesign.lu/resources/calendar/1/calendar.ics')
+    if (response.ok) {
+      const icsText = await response.text()
+      console.log('ICS Data received:', icsText.substring(0, 200)) // Log first 200 chars
+      const holidays = parseICSHolidays(icsText, selectedYear.value)
+      console.log('Parsed holidays:', holidays) // Log parsed results
+      schoolHolidays.value = holidays.map(holiday => ({
+        startDate: holiday.start,
+        endDate: holiday.end,
+        name: [{ language: 'LU', text: holiday.summary }]
+      }))
+    }
+  } catch (error) {
+    console.error('Failed to fetch school holidays:', error)
+  }
 })
 
 // Add a new watch for selectedYear
@@ -219,7 +284,7 @@ function resetYear() {
     }
     return acc
   }, {} as Record<string, string>)
-  
+
   dayStates.value = newStates
 }
 
@@ -227,10 +292,10 @@ function resetYear() {
 const holidaySummary = computed(() => {
   const hrDays: Date[] = []
   const fdDays: Date[] = []
-  
+
   Object.entries(dayStates.value).forEach(([key, state]) => {
     const [year, month, day] = key.split('-').map(Number)
-    
+
     // Only process entries for selected year
     if (year === selectedYear.value) {
       const date = new Date(year, month - 1, day)
@@ -238,7 +303,7 @@ const holidaySummary = computed(() => {
       if (state === 'FD') fdDays.push(date)
     }
   })
-  
+
   return {
     hrDays: hrDays.sort((a, b) => a.getTime() - b.getTime()).map(date => format(date, 'dd MMM yyyy')),
     fdDays: fdDays.sort((a, b) => a.getTime() - b.getTime()).map(date => format(date, 'dd MMM yyyy'))
@@ -263,16 +328,16 @@ const saveState = async () => {
       })
     })
     const { id } = await response.json()
-    
+
     // Create the full URL
     const url = `${window.location.origin}/${id}`
-    
+
     // Copy to clipboard and show modal
     await navigator.clipboard.writeText(url)
     modalMessage.value = `Calendar URL copied to clipboard!`
     showModal.value = true
     modalUrl.value = url
-    
+
     // Hide modal after 3 seconds
     setTimeout(() => {
       showModal.value = false
@@ -288,7 +353,7 @@ const loadState = async (id: string) => {
   try {
     const response = await fetch(`/api/${id}`)
     if (!response.ok) throw new Error('Failed to load')
-    
+
     const data = await response.json()
     dayStates.value = data.dayStates
     selectedYear.value = data.selectedYear
@@ -309,10 +374,10 @@ onMounted(async () => {
 function isConnectedWeekend(year: number, month: number, day: number) {
   const date = new Date(year, month - 1, day)
   const dayOfWeek = date.getDay()
-  
+
   // Only check Saturdays and Sundays
   if (dayOfWeek !== 0 && dayOfWeek !== 6) return null
-  
+
   // For Saturday, check Friday and Monday
   if (dayOfWeek === 6) {
     const fridayKey = getDayKey(year, month, day - 1)
@@ -321,12 +386,12 @@ function isConnectedWeekend(year: number, month: number, day: number) {
     const mondayState = dayStates.value[mondayKey]
     const fridayIsHoliday = isPublicHoliday(year, month, day - 1)
     const mondayIsHoliday = isPublicHoliday(year, month, day + 2)
-    
+
     // Return the state if either Friday or Monday has one, or is a holiday
     if (fridayIsHoliday || mondayIsHoliday) return 'HR'
     return fridayState || mondayState
   }
-  
+
   // For Sunday, check Friday and Monday
   if (dayOfWeek === 0) {
     const fridayKey = getDayKey(year, month, day - 2)
@@ -335,7 +400,7 @@ function isConnectedWeekend(year: number, month: number, day: number) {
     const mondayState = dayStates.value[mondayKey]
     const fridayIsHoliday = isPublicHoliday(year, month, day - 2)
     const mondayIsHoliday = isPublicHoliday(year, month, day + 1)
-    
+
     // Return the state if either Friday or Monday has one, or is a holiday
     if (fridayIsHoliday || mondayIsHoliday) return 'HR'
     return fridayState || mondayState
@@ -345,40 +410,114 @@ function isConnectedWeekend(year: number, month: number, day: number) {
 // Add this helper function
 function isConnectedHoliday(year: number, month: number, day: number) {
   if (!isPublicHoliday(year, month, day)) return null
-  
+
   const date = new Date(year, month - 1, day)
   const prevDate = new Date(date)
   const nextDate = new Date(date)
   prevDate.setDate(date.getDate() - 1)
   nextDate.setDate(date.getDate() + 1)
-  
+
   // Check previous day
   const prevKey = getDayKey(prevDate.getFullYear(), prevDate.getMonth() + 1, prevDate.getDate())
   const prevState = dayStates.value[prevKey]
   const prevIsWeekend = [0, 6].includes(prevDate.getDay())
-  
+
   // Check next day
   const nextKey = getDayKey(nextDate.getFullYear(), nextDate.getMonth() + 1, nextDate.getDate())
   const nextState = dayStates.value[nextKey]
   const nextIsWeekend = [0, 6].includes(nextDate.getDay())
-  
+
   // Return true if either adjacent day is a weekend or has HR/FD state
-  return (prevState === 'HR' || prevState === 'FD' || prevIsWeekend || 
-          nextState === 'HR' || nextState === 'FD' || nextIsWeekend)
+  return (prevState === 'HR' || prevState === 'FD' || prevIsWeekend ||
+    nextState === 'HR' || nextState === 'FD' || nextIsWeekend)
+}
+
+// Add this function to check if a date is within school holidays
+function isSchoolHoliday(year: number, month: number, day: number) {
+  const monthStr = month < 10 ? `0${month}` : month
+  const dayStr = day < 10 ? `0${day}` : day
+  const dateStr = `${year}-${monthStr}-${dayStr}T00:00:00.000Z`
+  const date = parseISO(dateStr)
+
+  return schoolHolidays.value.some(holiday => {
+    return date >= holiday.startDate && date < holiday.endDate
+  })
+}
+
+// Add new ref for school holiday toggle
+const showSchoolHolidays = ref(true)
+
+// Add holiday name translations (after the imports)
+const holidayTranslations: Record<string, string> = {
+  'toussaint': 'All Saints Holiday',
+  'noël': 'Christmas Holiday',
+  'carnaval': 'Carnival Holiday',
+  'pâques': 'Easter Holiday',
+  'pentecôte': 'Pentecost Holiday',
+  'travail': 'Labour Day',
+  'été': 'Summer Holiday',
+  'printemps': 'Spring Holiday',
+  'hiver': 'Winter Holiday'
+}
+
+// Update the parseICSHolidays function to output UTC dates
+function parseICSHolidays(icsData: string, targetYear: number) {
+  const events: { start: Date; end: Date; summary: string }[] = []
+  const lines = icsData.split(/\r?\n/)
+  let currentEvent: Partial<{ start: string; end: string; summary: string }> = {}
+  let inEvent = false
+
+  for (const line of lines) {
+    const cleanLine = line.trim()
+    
+    if (cleanLine === 'BEGIN:VEVENT') {
+      inEvent = true
+      currentEvent = {}
+    } else if (cleanLine === 'END:VEVENT') {
+      if (currentEvent.start && currentEvent.end && currentEvent.summary) {
+        // Convert to UTC ISO strings
+        const startStr = `${currentEvent.start.slice(0, 4)}-${currentEvent.start.slice(4, 6)}-${currentEvent.start.slice(6, 8)}T00:00:00.000Z`
+        const endStr = `${currentEvent.end.slice(0, 4)}-${currentEvent.end.slice(4, 6)}-${currentEvent.end.slice(6, 8)}T00:00:00.000Z`
+
+        // Translate the summary if a translation exists
+        const translatedSummary = Object.entries(holidayTranslations)
+          .find(entry => currentEvent.summary?.toLowerCase().includes(entry[0]))?.[1] || 
+          currentEvent.summary
+
+        events.push({
+          start: parseISO(startStr),
+          end: parseISO(endStr),
+          summary: translatedSummary
+        })
+      }
+      inEvent = false
+    } else if (inEvent) {
+      if (cleanLine.startsWith('DTSTART')) {
+        currentEvent.start = cleanLine.split(':')[1]
+      } else if (cleanLine.startsWith('DTEND')) {
+        currentEvent.end = cleanLine.split(':')[1]
+      } else if (cleanLine.startsWith('SUMMARY')) {
+        currentEvent.summary = cleanLine.split(':')[1]
+      }
+    }
+  }
+
+  return events.filter(event => {
+    const startYear = event.start.getUTCFullYear()
+    const endYear = event.end.getUTCFullYear()
+    return startYear >= 2024 && endYear >= 2024
+  })
 }
 </script>
 
 <template>
   <div class="flex min-h-screen flex-col items-center bg-gray-100 p-8">
     <!-- Custom Tooltip -->
-    <div
-      v-show="showTooltip"
-      class="fixed z-50 px-2 py-1 text-sm bg-gray-900 text-white rounded shadow-lg pointer-events-none"
-      :style="{
+    <div v-show="showTooltip"
+      class="fixed z-50 px-2 py-1 text-sm bg-gray-900 text-white rounded shadow-lg pointer-events-none" :style="{
         left: `${tooltipPosition.x}px`,
         top: `${tooltipPosition.y}px`
-      }"
-    >
+      }">
       {{ tooltipContent }}
     </div>
 
@@ -386,40 +525,23 @@ function isConnectedHoliday(year: number, month: number, day: number) {
     <div class="mb-8 flex flex-wrap items-center gap-4">
       <div class="flex items-center gap-4 flex-wrap">
         <!-- Edit Copy button when id exists -->
-        <button 
-          v-if="id"
-          @click="router.push('/')"
-          class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-        >
+        <button v-if="id" @click="router.push('/')"
+          class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
           Go back to my holidays
         </button>
-        
+
         <!-- Show as text when id exists -->
-        <div 
-          v-if="id"
-          class="rounded px-3 py-1 w-24 cursor-default text-3xl"
-        >
+        <div v-if="id" class="rounded px-3 py-1 w-24 cursor-default text-3xl">
           {{ selectedYear }}
         </div>
         <!-- Show as input when no id -->
-        <input 
-          v-else
-          type="number" 
-          v-model="selectedYear"
-          class="border rounded px-3 py-1 w-24"
-        >
-        <button 
-          v-if="!id"
-          @click="resetYear"
-          class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-        >
+        <input v-else type="number" v-model="selectedYear" class="border rounded px-3 py-1 w-24">
+        <button v-if="!id" @click="resetYear"
+          class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors">
           Reset Year
         </button>
-        <button 
-          v-if="!id"
-          @click="saveState"
-          class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-        >
+        <button v-if="!id" @click="saveState"
+          class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
           Share my holidays
         </button>
       </div>
@@ -427,41 +549,39 @@ function isConnectedHoliday(year: number, month: number, day: number) {
         <div class="flex flex-col gap-2 min-w-[200px]">
           <!-- Existing betterViewMode toggle -->
           <label class="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              v-model="betterViewMode"
-              class="sr-only peer"
-            >
-            <div class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
+            <input type="checkbox" v-model="betterViewMode" class="sr-only peer">
+            <div
+              class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
             </div>
             <span class="text-sm">Show only holiday</span>
           </label>
 
           <!-- Modified showConnected toggle -->
-          <label 
-            class="flex items-center gap-2 relative"
+          <label class="flex items-center gap-2 relative"
             :class="{ 'cursor-pointer': betterViewMode, 'opacity-50': !betterViewMode }"
             @mouseenter="!betterViewMode ? showConnectedTooltip = true : null"
-            @mouseleave="showConnectedTooltip = false"
-          >
-            <input
-              type="checkbox"
-              v-model="showConnected"
-              :disabled="!betterViewMode"
-              class="sr-only peer"
-              @change="!betterViewMode ? showConnected = false : null"
-            >
-            <div class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
+            @mouseleave="showConnectedTooltip = false">
+            <input type="checkbox" v-model="showConnected" :disabled="!betterViewMode" class="sr-only peer"
+              @change="!betterViewMode ? showConnected = false : null">
+            <div
+              class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
             </div>
             <span class="text-sm">Show connected</span>
-            
+
             <!-- Tooltip -->
-            <div
-              v-if="!betterViewMode && showConnectedTooltip"
-              class="absolute left-0 -bottom-12 w-48 px-2 py-1 bg-gray-900 text-white text-xs rounded shadow-lg z-10"
-            >
+            <div v-if="!betterViewMode && showConnectedTooltip"
+              class="absolute left-0 -bottom-12 w-48 px-2 py-1 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
               Shows connected holidays when "Show only holiday" is enabled
             </div>
+          </label>
+
+          <!-- Add new ref for school holiday toggle -->
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" v-model="showSchoolHolidays" class="sr-only peer">
+            <div
+              class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
+            </div>
+            <span class="text-sm">Show school holidays</span>
           </label>
         </div>
       </div>
@@ -478,29 +598,27 @@ function isConnectedHoliday(year: number, month: number, day: number) {
                 <div class="w-8 font-bold">
                   <span>{{ format(new Date(selectedYear, month - 1), 'MMM') }}</span>
                 </div>
-                
+
                 <!-- Days -->
                 <template v-for="day in getDaysInMonth(month)" :key="day">
-                  <div 
-                    class="h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center rounded text-sm transition-colors"
+                  <div class="h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center rounded text-sm transition-colors"
                     :class="{
-                      'bg-green-200': !betterViewMode && getDayOfWeek(selectedYear, month, day) === 6,
-                      'bg-green-500 text-white': !betterViewMode && getDayOfWeek(selectedYear, month, day) === 0,
+                      'bg-red-100': showSchoolHolidays && isSchoolHoliday(selectedYear, month, day) &&
+                        !isPublicHoliday(selectedYear, month, day) && (!betterViewMode && !isWeekend(selectedYear, month, day) || betterViewMode),
+                      'bg-green-200': !betterViewMode && isSaturday(selectedYear, month, day),
+                      'bg-green-500 text-white': !betterViewMode && isSunday(selectedYear, month, day),
+                      'bg-red-600 text-white': isPublicHoliday(selectedYear, month, day),
                       'cursor-pointer': !id && isClickable(selectedYear, month, day),
                       'cursor-default': id || !isClickable(selectedYear, month, day),
-                      'bg-red-600 text-white': !betterViewMode && isPublicHoliday(selectedYear, month, day),
-                      'bg-red-100 !text-red-600 border-2 border-red-400': dayStates[getDayKey(selectedYear, month, day)] === 'HR' || 
+                      'bg-red-100 !text-red-600 border-2 border-red-400': dayStates[getDayKey(selectedYear, month, day)] === 'HR' ||
                         (showConnected && betterViewMode && isConnectedWeekend(selectedYear, month, day) === 'HR') ||
-                        (showConnected && betterViewMode && isPublicHoliday(selectedYear, month, day) && isConnectedHoliday(selectedYear, month, day)), 
-                      'bg-orange-100 !text-orange-600 border-2 border-orange-400': dayStates[getDayKey(selectedYear, month, day)] === 'FD' || 
-                        (showConnected && betterViewMode && isConnectedWeekend(selectedYear, month, day) === 'FD'), 
-                    }"
-                    @click="isClickable(selectedYear, month, day) && 
-                           toggleDayState(selectedYear, month, day)"
-                    @mousemove="handleMouseMove($event, selectedYear, month, day)"
-                    @mouseleave="handleMouseLeave"
-                  >
-                    {{ dayStates[getDayKey(selectedYear, month, day)] || day }}
+                        (showConnected && betterViewMode && isPublicHoliday(selectedYear, month, day) && isConnectedHoliday(selectedYear, month, day)),
+                      'bg-orange-100 !text-orange-600 border-2 border-orange-400': dayStates[getDayKey(selectedYear, month, day)] === 'FD' ||
+                        (showConnected && betterViewMode && isConnectedWeekend(selectedYear, month, day) === 'FD'),
+                    }" @click="isClickable(selectedYear, month, day) &&
+                      toggleDayState(selectedYear, month, day)"
+                    @mousemove="handleMouseMove($event, selectedYear, month, day)" @mouseleave="handleMouseLeave">
+                    {{ betterViewMode ? day : (dayStates[getDayKey(selectedYear, month, day)] || day) }}
                   </div>
                 </template>
               </div>
@@ -541,24 +659,15 @@ function isConnectedHoliday(year: number, month: number, day: number) {
     </div>
 
     <!-- Modal -->
-    <div 
-      v-if="showModal"
-      class="fixed z-50 inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-    >
+    <div v-if="showModal" class="fixed z-50 inset-0 bg-black bg-opacity-50 flex items-center justify-center">
       <div class="bg-white p-6 rounded-lg">
-        <p>{{ modalMessage}}</p>
-        <a 
-          :href="modalUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="text-blue-500 hover:text-blue-700 underline break-all"
-        >
+        <p>{{ modalMessage }}</p>
+        <a :href="modalUrl" target="_blank" rel="noopener noreferrer"
+          class="text-blue-500 hover:text-blue-700 underline break-all">
           {{ modalUrl }}
         </a>
-        <button 
-          @click="showModal = false"
-          class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors block w-full"
-        >
+        <button @click="showModal = false"
+          class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors block w-full">
           Close
         </button>
       </div>
