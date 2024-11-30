@@ -603,7 +603,7 @@ function parseICSHolidays(icsData: string, targetYear: number) {
                 <template v-for="day in getDaysInMonth(month)" :key="day">
                   <div class="h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center rounded text-sm transition-colors"
                     :class="{
-                      'bg-red-100': showSchoolHolidays && isSchoolHoliday(selectedYear, month, day) &&
+                      'bg-blue-100': showSchoolHolidays && isSchoolHoliday(selectedYear, month, day) &&
                         !isPublicHoliday(selectedYear, month, day) && (!betterViewMode && !isWeekend(selectedYear, month, day) || betterViewMode),
                       'bg-green-200': !betterViewMode && isSaturday(selectedYear, month, day),
                       'bg-green-500 text-white': !betterViewMode && isSunday(selectedYear, month, day),
