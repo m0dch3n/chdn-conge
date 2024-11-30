@@ -560,6 +560,30 @@ function getMonthWeeks(month: number) {
 
 // Add weekday labels
 const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+function getDayClasses(year: number, month: number, day: number) {
+  const dayKey = getDayKey(year, month, day)
+  const isSchoolHol = showSchoolHolidays.value && isSchoolHoliday(year, month, day)
+  const dayState = dayStates.value[dayKey]
+  
+  return {
+    'bg-blue-100': isSchoolHol && !isPublicHoliday(year, month, day),
+    'bg-green-200': !betterViewMode.value && isSaturday(year, month, day),
+    'bg-green-500 text-white': !betterViewMode.value && isSunday(year, month, day),
+    'border-2 border-green-200': betterViewMode.value && isSaturday(year, month, day),
+    'border-2 border-green-500': betterViewMode.value && isSunday(year, month, day),
+    'bg-red-600 text-white': isPublicHoliday(year, month, day),
+    'cursor-pointer': !id.value && isClickable(year, month, day),
+    'cursor-default': id.value || !isClickable(year, month, day),
+    'bg-red-100': dayState === 'HR' && !isSchoolHol,
+    'bg-orange-100': dayState === 'FD' && !isSchoolHol,
+    'border-2 border-red-400 !text-red-600': dayState === 'HR' ||
+      (showConnected.value && betterViewMode.value && isConnectedWeekend(year, month, day) === 'HR') ||
+      (showConnected.value && betterViewMode.value && isPublicHoliday(year, month, day) && isConnectedHoliday(year, month, day)),
+    'border-2 border-orange-400 !text-orange-600': dayState === 'FD' ||
+      (showConnected.value && betterViewMode.value && isConnectedWeekend(year, month, day) === 'FD'),
+  }
+}
 </script>
 
 <template>
@@ -664,20 +688,8 @@ const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
                 <!-- Days -->
                 <template v-for="day in getDaysInMonth(month)" :key="day">
                   <div class="h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center rounded text-sm transition-colors"
-                    :class="{
-                      'bg-blue-100': showSchoolHolidays && isSchoolHoliday(selectedYear, month, day) &&
-                        !isPublicHoliday(selectedYear, month, day) && (!betterViewMode && !isWeekend(selectedYear, month, day) || betterViewMode),
-                      'bg-green-200': !betterViewMode && isSaturday(selectedYear, month, day),
-                      'bg-green-500 text-white': !betterViewMode && isSunday(selectedYear, month, day),
-                      'bg-red-600 text-white': isPublicHoliday(selectedYear, month, day),
-                      'cursor-pointer': !id && isClickable(selectedYear, month, day),
-                      'cursor-default': id || !isClickable(selectedYear, month, day),
-                      'bg-red-100 !text-red-600 border-2 border-red-400': dayStates[getDayKey(selectedYear, month, day)] === 'HR' ||
-                        (showConnected && betterViewMode && isConnectedWeekend(selectedYear, month, day) === 'HR') ||
-                        (showConnected && betterViewMode && isPublicHoliday(selectedYear, month, day) && isConnectedHoliday(selectedYear, month, day)),
-                      'bg-orange-100 !text-orange-600 border-2 border-orange-400': dayStates[getDayKey(selectedYear, month, day)] === 'FD' ||
-                        (showConnected && betterViewMode && isConnectedWeekend(selectedYear, month, day) === 'FD'),
-                    }" @click="isClickable(selectedYear, month, day) &&
+                    :class="getDayClasses(selectedYear, month, day)"
+                    @click="isClickable(selectedYear, month, day) &&
                       toggleDayState(selectedYear, month, day)"
                     @mousemove="handleMouseMove($event, selectedYear, month, day)" @mouseleave="handleMouseLeave">
                     {{ betterViewMode ? day : (dayStates[getDayKey(selectedYear, month, day)] || day) }}
@@ -724,20 +736,7 @@ const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
                     </div>
                     <div v-else
                       class="aspect-square flex items-center justify-center rounded text-xs sm:text-sm transition-colors"
-                      :class="{
-                        'bg-blue-100': showSchoolHolidays && isSchoolHoliday(selectedYear, month, day) &&
-                          !isPublicHoliday(selectedYear, month, day) && (!betterViewMode && !isWeekend(selectedYear, month, day) || betterViewMode),
-                        'bg-green-200': !betterViewMode && isSaturday(selectedYear, month, day),
-                        'bg-green-500 text-white': !betterViewMode && isSunday(selectedYear, month, day),
-                        'bg-red-600 text-white': isPublicHoliday(selectedYear, month, day),
-                        'cursor-pointer': !id && isClickable(selectedYear, month, day),
-                        'cursor-default': id || !isClickable(selectedYear, month, day),
-                        'bg-red-100 !text-red-600 border-2 border-red-400': dayStates[getDayKey(selectedYear, month, day)] === 'HR' ||
-                          (showConnected && betterViewMode && isConnectedWeekend(selectedYear, month, day) === 'HR') ||
-                          (showConnected && betterViewMode && isPublicHoliday(selectedYear, month, day) && isConnectedHoliday(selectedYear, month, day)),
-                        'bg-orange-100 !text-orange-600 border-2 border-orange-400': dayStates[getDayKey(selectedYear, month, day)] === 'FD' ||
-                          (showConnected && betterViewMode && isConnectedWeekend(selectedYear, month, day) === 'FD'),
-                      }"
+                      :class="getDayClasses(selectedYear, month, day)"
                       @click="isClickable(selectedYear, month, day) && toggleDayState(selectedYear, month, day)"
                       @mousemove="handleMouseMove($event, selectedYear, month, day)"
                       @mouseleave="handleMouseLeave">
