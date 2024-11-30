@@ -567,20 +567,20 @@ function getDayClasses(year: number, month: number, day: number) {
   const dayState = dayStates.value[dayKey]
   
   return {
+    'text-white': (!betterViewMode.value && (isSunday(year, month, day) || isPublicHoliday(year, month, day))),
     'bg-blue-100': isSchoolHol && !isPublicHoliday(year, month, day),
     'bg-green-200': !betterViewMode.value && isSaturday(year, month, day),
     'bg-green-500 text-white': !betterViewMode.value && isSunday(year, month, day),
-    'border-2 border-green-200': betterViewMode.value && isSaturday(year, month, day),
-    'border-2 border-green-500': betterViewMode.value && isSunday(year, month, day),
-    'bg-red-600 text-white': isPublicHoliday(year, month, day),
+    'border-2 border-green-200': isWeekend(year, month, day) && ((!showConnected.value && betterViewMode.value) || (showConnected.value && !isConnectedWeekend(year, month, day))),
+    'bg-red-600': (!betterViewMode.value && isPublicHoliday(year, month, day)),
     'cursor-pointer': !id.value && isClickable(year, month, day),
     'cursor-default': id.value || !isClickable(year, month, day),
-    'bg-red-100': dayState === 'HR' && !isSchoolHol,
-    'bg-orange-100': dayState === 'FD' && !isSchoolHol,
-    'border-2 border-red-400 !text-red-600': dayState === 'HR' ||
+    'bg-red-100': (dayState === 'HR' && !isSchoolHol) || (betterViewMode.value && isPublicHoliday(year, month, day)),
+    'bg-orange-100': (dayState === 'FD' && !isSchoolHol) || (betterViewMode.value && isPublicHoliday(year, month, day)),
+    'border-2 border-red-400 text-red-600': dayState === 'HR' ||
       (showConnected.value && betterViewMode.value && isConnectedWeekend(year, month, day) === 'HR') ||
       (showConnected.value && betterViewMode.value && isPublicHoliday(year, month, day) && isConnectedHoliday(year, month, day)),
-    'border-2 border-orange-400 !text-orange-600': dayState === 'FD' ||
+    'border-2 border-orange-400 text-orange-600': dayState === 'FD' ||
       (showConnected.value && betterViewMode.value && isConnectedWeekend(year, month, day) === 'FD'),
   }
 }
