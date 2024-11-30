@@ -15,7 +15,7 @@ interface SchoolHoliday {
 
 const selectedYear = ref(new Date().getFullYear())
 const dayStates = ref<Record<string, string>>({})
-const betterViewMode = ref(false)
+const focusOnRequests = ref(false)
 const schoolHolidays = ref<SchoolHoliday[]>([])
 const showTextLetters = ref(true)
 
@@ -369,78 +369,6 @@ onMounted(async () => {
   }
 })
 
-// Add this helper function
-function isConnectedWeekend(year: number, month: number, day: number) {
-  const date = new Date(year, month - 1, day)
-  const dayOfWeek = date.getDay()
-
-  // Only check Saturdays and Sundays
-  if (dayOfWeek !== 0 && dayOfWeek !== 6) return null
-
-  // For Saturday, check Friday and Monday
-  if (dayOfWeek === 6) {
-    const friday = new Date(date)
-    friday.setDate(date.getDate() - 1)
-    const monday = new Date(date)
-    monday.setDate(date.getDate() + 2)
-
-    const fridayKey = getDayKey(friday.getFullYear(), friday.getMonth() + 1, friday.getDate())
-    const mondayKey = getDayKey(monday.getFullYear(), monday.getMonth() + 1, monday.getDate())
-    const fridayState = dayStates.value[fridayKey]
-    const mondayState = dayStates.value[mondayKey]
-    const fridayIsHoliday = isPublicHoliday(friday.getFullYear(), friday.getMonth() + 1, friday.getDate())
-    const mondayIsHoliday = isPublicHoliday(monday.getFullYear(), monday.getMonth() + 1, monday.getDate())
-
-    // Return the state if either Friday or Monday has one, or is a holiday
-    if (fridayIsHoliday || mondayIsHoliday) return 'HR'
-    return fridayState || mondayState
-  }
-
-  // For Sunday, check Friday and Monday
-  if (dayOfWeek === 0) {
-    const friday = new Date(date)
-    friday.setDate(date.getDate() - 2)
-    const monday = new Date(date)
-    monday.setDate(date.getDate() + 1)
-
-    const fridayKey = getDayKey(friday.getFullYear(), friday.getMonth() + 1, friday.getDate())
-    const mondayKey = getDayKey(monday.getFullYear(), monday.getMonth() + 1, monday.getDate())
-    const fridayState = dayStates.value[fridayKey]
-    const mondayState = dayStates.value[mondayKey]
-    const fridayIsHoliday = isPublicHoliday(friday.getFullYear(), friday.getMonth() + 1, friday.getDate())
-    const mondayIsHoliday = isPublicHoliday(monday.getFullYear(), monday.getMonth() + 1, monday.getDate())
-
-    // Return the state if either Friday or Monday has one, or is a holiday
-    if (fridayIsHoliday || mondayIsHoliday) return 'HR'
-    return fridayState || mondayState
-  }
-}
-
-// Add this helper function
-function isConnectedHoliday(year: number, month: number, day: number) {
-  if (!isPublicHoliday(year, month, day)) return null
-
-  const date = new Date(year, month - 1, day)
-  const prevDate = new Date(date)
-  const nextDate = new Date(date)
-  prevDate.setDate(date.getDate() - 1)
-  nextDate.setDate(date.getDate() + 1)
-
-  // Check previous day
-  const prevKey = getDayKey(prevDate.getFullYear(), prevDate.getMonth() + 1, prevDate.getDate())
-  const prevState = dayStates.value[prevKey]
-  const prevIsWeekend = [0, 6].includes(prevDate.getDay())
-
-  // Check next day
-  const nextKey = getDayKey(nextDate.getFullYear(), nextDate.getMonth() + 1, nextDate.getDate())
-  const nextState = dayStates.value[nextKey]
-  const nextIsWeekend = [0, 6].includes(nextDate.getDay())
-
-  // Return true if either adjacent day is a weekend or has HR/FD state
-  return (prevState === 'HR' || prevState === 'FD' || prevIsWeekend ||
-    nextState === 'HR' || nextState === 'FD' || nextIsWeekend)
-}
-
 // Add this function to check if a date is within school holidays
 function isSchoolHoliday(year: number, month: number, day: number) {
   const monthStr = month < 10 ? `0${month}` : month
@@ -576,16 +504,16 @@ function getDayClasses(year: number, month: number, day: number) {
   const dayState = dayStates.value[dayKey]
 
   return {
-    'text-white': (!betterViewMode.value && (isSunday(year, month, day) || isPublicHoliday(year, month, day))),
+    'text-white': (!focusOnRequests.value && (isSunday(year, month, day) || isPublicHoliday(year, month, day))),
     'bg-blue-100': isSchoolHol && !isPublicHoliday(year, month, day),
-    '!bg-green-200': !betterViewMode.value && isSaturday(year, month, day),
-    '!bg-green-500 text-white': !betterViewMode.value && isSunday(year, month, day),
-    'border-2 border-green-200': isWeekend(year, month, day) && !betterViewMode.value,
-    'bg-red-600': (!betterViewMode.value && isPublicHoliday(year, month, day)),
+    '!bg-green-200': !focusOnRequests.value && isSaturday(year, month, day),
+    '!bg-green-500 text-white': !focusOnRequests.value && isSunday(year, month, day),
+    'border-2 border-green-200': isWeekend(year, month, day) && !focusOnRequests.value,
+    'bg-red-600': (!focusOnRequests.value && isPublicHoliday(year, month, day)),
     'cursor-pointer': !id.value && isClickable(year, month, day),
     'cursor-default': id.value || !isClickable(year, month, day),
-    'bg-red-100': (dayState === 'HR' && !isSchoolHol || (dayState === 'HR' && betterViewMode.value)),
-    'bg-orange-100': (dayState === 'FD' && !isSchoolHol  || (dayState === 'FD' && betterViewMode.value)),
+    'bg-red-100': (dayState === 'HR' && !isSchoolHol || (dayState === 'HR' && focusOnRequests.value)),
+    'bg-orange-100': (dayState === 'FD' && !isSchoolHol  || (dayState === 'FD' && focusOnRequests.value)),
     'border-2 border-red-400 text-red-600': dayState === 'HR',
     'border-2 border-orange-400 text-orange-600': dayState === 'FD',
   }
@@ -630,15 +558,6 @@ function getDayClasses(year: number, month: number, day: number) {
       <div class="flex flex-wrap items-center gap-4">
         <div class="flex flex-col gap-2 min-w-[200px]">
 
-          <!-- Add new ref for school holiday toggle -->
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" v-model="showSchoolHolidays" class="sr-only peer">
-            <div
-              class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
-            </div>
-            <span class="text-sm">Show school holidays</span>
-          </label>
-
           <!-- Add toggle button in the controls section around line 580 -->
           <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" v-model="showMonthView" class="sr-only peer">
@@ -646,6 +565,15 @@ function getDayClasses(year: number, month: number, day: number) {
               class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
             </div>
             <span class="text-sm">Month view</span>
+          </label>
+          
+          <!-- Add new ref for school holiday toggle -->
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" v-model="showSchoolHolidays" class="sr-only peer">
+            <div
+              class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
+            </div>
+            <span class="text-sm">Show school holidays</span>
           </label>
 
           <!-- Add the toggle in the template after the other toggles (around line 683) -->
@@ -657,13 +585,13 @@ function getDayClasses(year: number, month: number, day: number) {
             <span class="text-sm">Show text letters</span>
           </label>
 
-          <!-- Existing betterViewMode toggle -->
+          <!-- Rename betterViewMode toggle -->
           <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" v-model="betterViewMode" class="sr-only peer">
+            <input type="checkbox" v-model="focusOnRequests" class="sr-only peer">
             <div
               class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
             </div>
-            <span class="text-sm">Show only holiday</span>
+            <span class="text-sm">Focus on requests</span>
           </label>
 
         </div>
