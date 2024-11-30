@@ -16,9 +16,8 @@ interface SchoolHoliday {
 const selectedYear = ref(new Date().getFullYear())
 const dayStates = ref<Record<string, string>>({})
 const betterViewMode = ref(false)
-const showConnected = ref(false)
-const showConnectedTooltip = ref(false)
 const schoolHolidays = ref<SchoolHoliday[]>([])
+const showTextLetters = ref(true)
 
 function getEasterSunday(year: number): Date {
   const a = year % 19
@@ -380,12 +379,17 @@ function isConnectedWeekend(year: number, month: number, day: number) {
 
   // For Saturday, check Friday and Monday
   if (dayOfWeek === 6) {
-    const fridayKey = getDayKey(year, month, day - 1)
-    const mondayKey = getDayKey(year, month, day + 2)
+    const friday = new Date(date)
+    friday.setDate(date.getDate() - 1)
+    const monday = new Date(date)
+    monday.setDate(date.getDate() + 2)
+
+    const fridayKey = getDayKey(friday.getFullYear(), friday.getMonth() + 1, friday.getDate())
+    const mondayKey = getDayKey(monday.getFullYear(), monday.getMonth() + 1, monday.getDate())
     const fridayState = dayStates.value[fridayKey]
     const mondayState = dayStates.value[mondayKey]
-    const fridayIsHoliday = isPublicHoliday(year, month, day - 1)
-    const mondayIsHoliday = isPublicHoliday(year, month, day + 2)
+    const fridayIsHoliday = isPublicHoliday(friday.getFullYear(), friday.getMonth() + 1, friday.getDate())
+    const mondayIsHoliday = isPublicHoliday(monday.getFullYear(), monday.getMonth() + 1, monday.getDate())
 
     // Return the state if either Friday or Monday has one, or is a holiday
     if (fridayIsHoliday || mondayIsHoliday) return 'HR'
@@ -394,12 +398,17 @@ function isConnectedWeekend(year: number, month: number, day: number) {
 
   // For Sunday, check Friday and Monday
   if (dayOfWeek === 0) {
-    const fridayKey = getDayKey(year, month, day - 2)
-    const mondayKey = getDayKey(year, month, day + 1)
+    const friday = new Date(date)
+    friday.setDate(date.getDate() - 2)
+    const monday = new Date(date)
+    monday.setDate(date.getDate() + 1)
+
+    const fridayKey = getDayKey(friday.getFullYear(), friday.getMonth() + 1, friday.getDate())
+    const mondayKey = getDayKey(monday.getFullYear(), monday.getMonth() + 1, monday.getDate())
     const fridayState = dayStates.value[fridayKey]
     const mondayState = dayStates.value[mondayKey]
-    const fridayIsHoliday = isPublicHoliday(year, month, day - 2)
-    const mondayIsHoliday = isPublicHoliday(year, month, day + 1)
+    const fridayIsHoliday = isPublicHoliday(friday.getFullYear(), friday.getMonth() + 1, friday.getDate())
+    const mondayIsHoliday = isPublicHoliday(monday.getFullYear(), monday.getMonth() + 1, monday.getDate())
 
     // Return the state if either Friday or Monday has one, or is a holiday
     if (fridayIsHoliday || mondayIsHoliday) return 'HR'
@@ -469,7 +478,7 @@ function parseICSHolidays(icsData: string, targetYear: number) {
 
   for (const line of lines) {
     const cleanLine = line.trim()
-    
+
     if (cleanLine === 'BEGIN:VEVENT') {
       inEvent = true
       currentEvent = {}
@@ -481,7 +490,7 @@ function parseICSHolidays(icsData: string, targetYear: number) {
 
         // Translate the summary if a translation exists
         const translatedSummary = Object.entries(holidayTranslations)
-          .find(entry => currentEvent.summary?.toLowerCase().includes(entry[0]))?.[1] || 
+          .find(entry => currentEvent.summary?.toLowerCase().includes(entry[0]))?.[1] ||
           currentEvent.summary
 
         events.push({
@@ -527,9 +536,9 @@ function getMonthWeeks(month: number) {
     currentWeek.push(day)
     if (currentWeek.length === 7) {
       const weekDate = new Date(selectedYear.value, month - 1, currentWeek.find(d => d !== 0) || 1)
-      weeks.push({ 
-        weekNum: getWeek(weekDate, { weekStartsOn: 1 }), 
-        days: currentWeek 
+      weeks.push({
+        weekNum: getWeek(weekDate, { weekStartsOn: 1 }),
+        days: currentWeek
       })
       currentWeek = []
     }
@@ -541,17 +550,17 @@ function getMonthWeeks(month: number) {
       currentWeek.push(0)
     }
     const weekDate = new Date(selectedYear.value, month - 1, currentWeek.find(d => d !== 0) || 1)
-    weeks.push({ 
-      weekNum: getWeek(weekDate, { weekStartsOn: 1 }), 
-      days: currentWeek 
+    weeks.push({
+      weekNum: getWeek(weekDate, { weekStartsOn: 1 }),
+      days: currentWeek
     })
   }
 
   // Add extra weeks if we have less than 6, but with null week numbers
   while (weeks.length < 6) {
-    weeks.push({ 
-      weekNum: null, 
-      days: Array(7).fill(0) 
+    weeks.push({
+      weekNum: null,
+      days: Array(7).fill(0)
     })
   }
 
@@ -565,23 +574,20 @@ function getDayClasses(year: number, month: number, day: number) {
   const dayKey = getDayKey(year, month, day)
   const isSchoolHol = showSchoolHolidays.value && isSchoolHoliday(year, month, day)
   const dayState = dayStates.value[dayKey]
-  
+
   return {
     'text-white': (!betterViewMode.value && (isSunday(year, month, day) || isPublicHoliday(year, month, day))),
     'bg-blue-100': isSchoolHol && !isPublicHoliday(year, month, day),
-    'bg-green-200': !betterViewMode.value && isSaturday(year, month, day),
-    'bg-green-500 text-white': !betterViewMode.value && isSunday(year, month, day),
-    'border-2 border-green-200': isWeekend(year, month, day) && ((!showConnected.value && betterViewMode.value) || (showConnected.value && !isConnectedWeekend(year, month, day))),
+    '!bg-green-200': !betterViewMode.value && isSaturday(year, month, day),
+    '!bg-green-500 text-white': !betterViewMode.value && isSunday(year, month, day),
+    'border-2 border-green-200': isWeekend(year, month, day) && !betterViewMode.value,
     'bg-red-600': (!betterViewMode.value && isPublicHoliday(year, month, day)),
     'cursor-pointer': !id.value && isClickable(year, month, day),
     'cursor-default': id.value || !isClickable(year, month, day),
-    'bg-red-100': (dayState === 'HR' && !isSchoolHol) || (betterViewMode.value && isPublicHoliday(year, month, day)),
-    'bg-orange-100': (dayState === 'FD' && !isSchoolHol) || (betterViewMode.value && isPublicHoliday(year, month, day)),
-    'border-2 border-red-400 text-red-600': dayState === 'HR' ||
-      (showConnected.value && betterViewMode.value && isConnectedWeekend(year, month, day) === 'HR') ||
-      (showConnected.value && betterViewMode.value && isPublicHoliday(year, month, day) && isConnectedHoliday(year, month, day)),
-    'border-2 border-orange-400 text-orange-600': dayState === 'FD' ||
-      (showConnected.value && betterViewMode.value && isConnectedWeekend(year, month, day) === 'FD'),
+    'bg-red-100': (dayState === 'HR' && !isSchoolHol || (dayState === 'HR' && betterViewMode.value)),
+    'bg-orange-100': (dayState === 'FD' && !isSchoolHol  || (dayState === 'FD' && betterViewMode.value)),
+    'border-2 border-red-400 text-red-600': dayState === 'HR',
+    'border-2 border-orange-400 text-orange-600': dayState === 'FD',
   }
 }
 </script>
@@ -623,33 +629,6 @@ function getDayClasses(year: number, month: number, day: number) {
       </div>
       <div class="flex flex-wrap items-center gap-4">
         <div class="flex flex-col gap-2 min-w-[200px]">
-          <!-- Existing betterViewMode toggle -->
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" v-model="betterViewMode" class="sr-only peer">
-            <div
-              class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
-            </div>
-            <span class="text-sm">Show only holiday</span>
-          </label>
-
-          <!-- Modified showConnected toggle -->
-          <label class="flex items-center gap-2 relative"
-            :class="{ 'cursor-pointer': betterViewMode, 'opacity-50': !betterViewMode }"
-            @mouseenter="!betterViewMode ? showConnectedTooltip = true : null"
-            @mouseleave="showConnectedTooltip = false">
-            <input type="checkbox" v-model="showConnected" :disabled="!betterViewMode" class="sr-only peer"
-              @change="!betterViewMode ? showConnected = false : null">
-            <div
-              class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
-            </div>
-            <span class="text-sm">Show connected</span>
-
-            <!-- Tooltip -->
-            <div v-if="!betterViewMode && showConnectedTooltip"
-              class="absolute left-0 -bottom-12 w-48 px-2 py-1 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
-              Shows connected holidays when "Show only holiday" is enabled
-            </div>
-          </label>
 
           <!-- Add new ref for school holiday toggle -->
           <label class="flex items-center gap-2 cursor-pointer">
@@ -668,6 +647,25 @@ function getDayClasses(year: number, month: number, day: number) {
             </div>
             <span class="text-sm">Month view</span>
           </label>
+
+          <!-- Add the toggle in the template after the other toggles (around line 683) -->
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" v-model="showTextLetters" class="sr-only peer">
+            <div
+              class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
+            </div>
+            <span class="text-sm">Show text letters</span>
+          </label>
+
+          <!-- Existing betterViewMode toggle -->
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" v-model="betterViewMode" class="sr-only peer">
+            <div
+              class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
+            </div>
+            <span class="text-sm">Show only holiday</span>
+          </label>
+
         </div>
       </div>
     </div>
@@ -688,11 +686,10 @@ function getDayClasses(year: number, month: number, day: number) {
                 <!-- Days -->
                 <template v-for="day in getDaysInMonth(month)" :key="day">
                   <div class="h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center rounded text-sm transition-colors"
-                    :class="getDayClasses(selectedYear, month, day)"
-                    @click="isClickable(selectedYear, month, day) &&
+                    :class="getDayClasses(selectedYear, month, day)" @click="isClickable(selectedYear, month, day) &&
                       toggleDayState(selectedYear, month, day)"
                     @mousemove="handleMouseMove($event, selectedYear, month, day)" @mouseleave="handleMouseLeave">
-                    {{ betterViewMode ? day : (dayStates[getDayKey(selectedYear, month, day)] || day) }}
+                    {{ showTextLetters ? (dayStates[getDayKey(selectedYear, month, day)] || day) : day }}
                   </div>
                 </template>
               </div>
@@ -703,12 +700,11 @@ function getDayClasses(year: number, month: number, day: number) {
         <!-- Month view (new) -->
         <div v-else class="w-full flex justify-center">
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-fit">
-            <div v-for="month in 12" :key="month" 
-              class="border rounded-lg p-2 sm:p-4 bg-white shadow w-[300px]">
+            <div v-for="month in 12" :key="month" class="border rounded-lg p-2 sm:p-4 bg-white shadow w-[300px]">
               <h3 class="text-base sm:text-lg font-bold mb-2 sm:mb-4 text-center">
                 {{ format(new Date(selectedYear, month - 1), 'MMMM') }}
               </h3>
-              
+
               <!-- Weekday headers -->
               <div class="grid grid-cols-8 gap-0.5 sm:gap-1 mb-1 sm:mb-2">
                 <!-- Week number header -->
@@ -726,21 +722,20 @@ function getDayClasses(year: number, month: number, day: number) {
               <div class="grid grid-cols-8 gap-0.5 sm:gap-1 flex-grow">
                 <template v-for="week in getMonthWeeks(month)" :key="week.weekNum">
                   <!-- Week number -->
-                  <div class="aspect-square flex items-center justify-center text-xs sm:text-sm text-gray-400 font-medium">
+                  <div
+                    class="aspect-square flex items-center justify-center text-xs sm:text-sm text-gray-400 font-medium">
                     {{ week.weekNum !== null ? week.weekNum : '' }}
                   </div>
                   <!-- Days -->
                   <template v-for="day in week.days" :key="`${month}-${day}`">
-                    <div v-if="day === 0" 
-                      class="aspect-square flex items-center justify-center text-gray-300">
+                    <div v-if="day === 0" class="aspect-square flex items-center justify-center text-gray-300">
                     </div>
                     <div v-else
                       class="aspect-square flex items-center justify-center rounded text-xs sm:text-sm transition-colors"
                       :class="getDayClasses(selectedYear, month, day)"
                       @click="isClickable(selectedYear, month, day) && toggleDayState(selectedYear, month, day)"
-                      @mousemove="handleMouseMove($event, selectedYear, month, day)"
-                      @mouseleave="handleMouseLeave">
-                      {{ betterViewMode ? day : (dayStates[getDayKey(selectedYear, month, day)] || day) }}
+                      @mousemove="handleMouseMove($event, selectedYear, month, day)" @mouseleave="handleMouseLeave">
+                      {{ showTextLetters ? (dayStates[getDayKey(selectedYear, month, day)] || day) : day }}
                     </div>
                   </template>
                 </template>
