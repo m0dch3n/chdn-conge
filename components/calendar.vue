@@ -518,6 +518,56 @@ function getDayClasses(year: number, month: number, day: number) {
     'border-2 border-orange-400 text-orange-600': dayState === 'FD',
   }
 }
+
+const workingDaysCount = computed(() => {
+  let count = 0;
+  for (let month = 1; month <= 12; month++) {
+    const daysInMonth = getDaysInMonth(month);
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dayKey = getDayKey(selectedYear.value, month, day);
+      if (
+        !dayStates.value[dayKey] && // No state set
+        !isWeekend(selectedYear.value, month, day) && // Not a weekend
+        !isPublicHoliday(selectedYear.value, month, day) // Not a public holiday
+      ) {
+        count++;
+      }
+    }
+  }
+  return count;
+});
+
+// Calculate hours for no state days
+const workingDaysHours = computed(() => (workingDaysCount.value * 7.6).toFixed(1));
+const workingDaysHoursFull = computed(() => (workingDaysCount.value * 8).toFixed(1));
+
+// Add this new function after other helper functions
+function getMonthWorkingHours(month: number) {
+  let count = 0;
+  const daysInMonth = getDaysInMonth(month);
+  
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dayKey = getDayKey(selectedYear.value, month, day);
+    if (
+      !dayStates.value[dayKey] && // No state set
+      !isWeekend(selectedYear.value, month, day) && // Not a weekend
+      !isPublicHoliday(selectedYear.value, month, day) // Not a public holiday
+    ) {
+      count++;
+    }
+  }
+  
+  const hours = (count * 7.6).toFixed(1);
+  const hoursFull = (count * 8).toFixed(1);
+  const hoursDifference = (count * (8 - 7.6)).toFixed(1);
+
+  return {
+    days: count,
+    hours,
+    hoursFull,
+    hoursDifference
+  };
+}
 </script>
 
 <template>
@@ -668,6 +718,14 @@ function getDayClasses(year: number, month: number, day: number) {
                   </template>
                 </template>
               </div>
+
+              <!-- Add this after the calendar grid -->
+              <div class="mt-2 text-xs text-gray-600 border-t pt-2">
+                {{ getMonthWorkingHours(month).days }}d / 
+                {{ getMonthWorkingHours(month).hours }}h / 
+                {{ getMonthWorkingHours(month).hoursFull }}h full /
+                Difference: {{ getMonthWorkingHours(month).hoursDifference }}h
+              </div>
             </div>
           </div>
         </div>
@@ -701,6 +759,11 @@ function getDayClasses(year: number, month: number, day: number) {
             No free days
           </li>
         </ul>
+      </div>
+      <div>
+        <h3 class="font-bold mb-2 bg-gray-100 text-gray-600 p-1">
+          Working days: {{ workingDaysCount }}d / {{ workingDaysHours }}h / {{ workingDaysHoursFull }}h full
+        </h3>
       </div>
     </div>
 
