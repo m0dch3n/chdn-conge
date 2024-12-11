@@ -213,8 +213,8 @@ function getWeekNumber(date: Date): number {
 function handleMouseMove(event: MouseEvent, year: number, month: number, day: number) {
   tooltipDay.value = { year, month, day }
   tooltipPosition.value = {
-    x: event.pageX + 10,
-    y: event.pageY + 10
+    x: event.clientX + 10,
+    y: event.clientY + 10
   }
   showTooltip.value = true
 }
@@ -513,7 +513,7 @@ function getDayClasses(year: number, month: number, day: number) {
     'cursor-pointer': !id.value && isClickable(year, month, day),
     'cursor-default': id.value || !isClickable(year, month, day),
     'bg-red-100': (dayState === 'HR' && !isSchoolHol || (dayState === 'HR' && focusOnRequests.value)),
-    'bg-orange-100': (dayState === 'FD' && !isSchoolHol  || (dayState === 'FD' && focusOnRequests.value)),
+    'bg-orange-100': (dayState === 'FD' && !isSchoolHol || (dayState === 'FD' && focusOnRequests.value)),
     'border-2 border-red-400 text-red-600': dayState === 'HR',
     'border-2 border-orange-400 text-orange-600': dayState === 'FD',
   }
@@ -526,7 +526,6 @@ const workingDaysCount = computed(() => {
     for (let day = 1; day <= daysInMonth; day++) {
       const dayKey = getDayKey(selectedYear.value, month, day);
       if (
-        !dayStates.value[dayKey] && // No state set
         !isWeekend(selectedYear.value, month, day) && // Not a weekend
         !isPublicHoliday(selectedYear.value, month, day) // Not a public holiday
       ) {
@@ -538,14 +537,17 @@ const workingDaysCount = computed(() => {
 });
 
 // Calculate hours for no state days
-const workingDaysHours = computed(() => (workingDaysCount.value * 7.6).toFixed(1));
-const workingDaysHoursFull = computed(() => (workingDaysCount.value * 8).toFixed(1));
+const workingDays = computed(() => (workingDaysCount.value - holidaySummary.value.hrDays.length));
+const workingDaysHours = computed(() => (workingDays.value * 7.6).toFixed(1));
+const workingDaysHoursFull = computed(() => (workingDays.value * 8).toFixed(1));
 
+const workingDaysRequired = computed(() => (workingDaysCount.value - 36));
+const workingHoursRequired = computed(() => (workingDaysRequired.value * 7.6).toFixed(1));
 // Add this new function after other helper functions
 function getMonthWorkingHours(month: number) {
   let count = 0;
   const daysInMonth = getDaysInMonth(month);
-  
+
   for (let day = 1; day <= daysInMonth; day++) {
     const dayKey = getDayKey(selectedYear.value, month, day);
     if (
@@ -556,7 +558,7 @@ function getMonthWorkingHours(month: number) {
       count++;
     }
   }
-  
+
   const hours = (count * 7.6).toFixed(1);
   const hoursFull = (count * 8).toFixed(1);
   const hoursDifference = (count * (8 - 7.6)).toFixed(1);
@@ -616,7 +618,7 @@ function getMonthWorkingHours(month: number) {
             </div>
             <span class="text-sm">Month view</span>
           </label>
-          
+
           <!-- Add new ref for school holiday toggle -->
           <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" v-model="showSchoolHolidays" class="sr-only peer">
@@ -721,8 +723,8 @@ function getMonthWorkingHours(month: number) {
 
               <!-- Add this after the calendar grid -->
               <div class="mt-2 text-xs text-gray-600 border-t pt-2">
-                {{ getMonthWorkingHours(month).days }}d / 
-                {{ getMonthWorkingHours(month).hours }}h / 
+                {{ getMonthWorkingHours(month).days }}d /
+                {{ getMonthWorkingHours(month).hours }}h /
                 {{ getMonthWorkingHours(month).hoursFull }}h full /
                 Difference: {{ getMonthWorkingHours(month).hoursDifference }}h
               </div>
@@ -760,9 +762,12 @@ function getMonthWorkingHours(month: number) {
           </li>
         </ul>
       </div>
-      <div>
+      <div class="flex flex-col gap-2">
         <h3 class="font-bold mb-2 bg-gray-100 text-gray-600 p-1">
-          Working days: {{ workingDaysCount }}d / {{ workingDaysHours }}h / {{ workingDaysHoursFull }}h full
+          Working days: {{ workingDays }}d / {{ workingDaysHours }}h / {{ workingDaysHoursFull }}h full
+        </h3>
+        <h3 class="font-bold mb-2 bg-gray-100 text-gray-600 p-1">
+          Working required: {{ workingDaysRequired }}d / {{ workingHoursRequired }}h
         </h3>
       </div>
     </div>
