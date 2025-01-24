@@ -766,9 +766,6 @@ function getMonthWorkingHours(month: number) {
         <h3 class="font-bold mb-2 bg-gray-100 text-gray-600 p-1">
           Working days: {{ workingDays }}d / {{ workingDaysHours }}h / {{ workingDaysHoursFull }}h full
         </h3>
-        <h3 class="font-bold mb-2 bg-gray-100 text-gray-600 p-1">
-          Working required: {{ workingDaysRequired }}d / {{ workingHoursRequired }}h
-        </h3>
       </div>
     </div>
 
