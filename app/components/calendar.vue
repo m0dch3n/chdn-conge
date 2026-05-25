@@ -499,12 +499,12 @@ function getDayClasses(year: number, month: number, day: number) {
   const dayState = dayStates.value[dayKey]
 
   return {
-    'text-white': (!focusOnRequests.value && (isSunday(year, month, day) || isPublicHoliday(year, month, day))),
+    'text-white': (isSunday(year, month, day) && !focusOnRequests.value) || isPublicHoliday(year, month, day),
     'bg-blue-100': isSchoolHol && !isPublicHoliday(year, month, day),
-    '!bg-green-200': !focusOnRequests.value && isSaturday(year, month, day),
-    '!bg-green-500 text-white': !focusOnRequests.value && isSunday(year, month, day),
-    'border-2 border-green-200': isWeekend(year, month, day) && !focusOnRequests.value,
-    'bg-red-600': (!focusOnRequests.value && isPublicHoliday(year, month, day)),
+    '!bg-green-200': !focusOnRequests.value && isSaturday(year, month, day) && !isPublicHoliday(year, month, day),
+    '!bg-green-500 text-white': !focusOnRequests.value && isSunday(year, month, day) && !isPublicHoliday(year, month, day),
+    'border-2 border-green-200': isWeekend(year, month, day) && !focusOnRequests.value && !isPublicHoliday(year, month, day),
+    '!bg-red-600': isPublicHoliday(year, month, day),
     'cursor-pointer': !id.value && isClickable(year, month, day),
     'cursor-default': id.value || !isClickable(year, month, day),
     'bg-red-100': (dayState === 'HR' && !isSchoolHol || (dayState === 'HR' && focusOnRequests.value)),
