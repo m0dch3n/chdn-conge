@@ -13,4 +13,9 @@ export default defineNuxtConfig({
       autoprefixer: {},
     },
   },
+  vite: {
+    optimizeDeps: {
+      include: ['date-fns'],
+    },
+  },
 });
