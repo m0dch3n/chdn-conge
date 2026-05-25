@@ -243,20 +243,15 @@ onMounted(async () => {
     }
   }
 
-  // Fetch and parse ICS data
+  // Fetch and parse ICS data via server-side proxy
   try {
-    const response = await fetch('https://www.educdesign.lu/resources/calendar/1/calendar.ics')
-    if (response.ok) {
-      const icsText = await response.text()
-      console.log('ICS Data received:', icsText.substring(0, 200)) // Log first 200 chars
-      const holidays = parseICSHolidays(icsText, selectedYear.value)
-      console.log('Parsed holidays:', holidays) // Log parsed results
-      schoolHolidays.value = holidays.map(holiday => ({
-        startDate: holiday.start,
-        endDate: holiday.end,
-        name: [{ language: 'LU', text: holiday.summary }]
-      }))
-    }
+    const icsText = await $fetch<string>('/api/school-holidays')
+    const holidays = parseICSHolidays(icsText, selectedYear.value)
+    schoolHolidays.value = holidays.map(holiday => ({
+      startDate: holiday.start,
+      endDate: holiday.end,
+      name: [{ language: 'LU', text: holiday.summary }]
+    }))
   } catch (error) {
     console.error('Failed to fetch school holidays:', error)
   }
