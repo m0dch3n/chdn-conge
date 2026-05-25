@@ -597,10 +597,6 @@ function getMonthWorkingHours(month: number) {
           class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors">
           Reset Year
         </button>
-        <button v-if="!id" @click="saveState"
-          class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
-          Share my holidays
-        </button>
       </div>
       <div class="flex flex-wrap items-center gap-4">
         <div class="flex flex-col gap-2 min-w-[200px]">
