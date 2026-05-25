@@ -25,11 +25,5 @@
     "@upstash/redis": "^1.34.3",
     "date-fns": "^4.1.0",
     "nanoid": "^5.0.8"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@parcel/watcher",
-      "esbuild"
-    ]
   }
 }
