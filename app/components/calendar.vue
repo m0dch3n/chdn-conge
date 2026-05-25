@@ -700,14 +700,14 @@ function getMonthWorkingHours(month: number) {
 
               <!-- Calendar grid -->
               <div class="grid grid-cols-8 gap-0.5 sm:gap-1 flex-grow">
-                <template v-for="week in getMonthWeeks(month)" :key="week.weekNum">
+                <template v-for="(week, weekIdx) in getMonthWeeks(month)" :key="`${month}-w${weekIdx}`">
                   <!-- Week number -->
                   <div
                     class="aspect-square flex items-center justify-center text-xs sm:text-sm text-gray-400 font-medium">
                     {{ week.weekNum !== null ? week.weekNum : '' }}
                   </div>
                   <!-- Days -->
-                  <template v-for="day in week.days" :key="`${month}-${day}`">
+                  <template v-for="(day, dayIdx) in week.days" :key="`${month}-${weekIdx}-${dayIdx}`">
                     <div v-if="day === 0" class="aspect-square flex items-center justify-center text-gray-300">
                     </div>
                     <div v-else
